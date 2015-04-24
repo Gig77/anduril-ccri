@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>GSNAPAlignBams</name>
+    <version>1.0</version>
+    <doc>
+    	GSNAP RNA-seq alignment for an array of input BAM files. Returns an array of aligned BAM files. Calls component GSNAP for actual alignment.
+    </doc>
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>QC</category>
+    <inputs>
+       <input name="inputBAMs" type="BAM" array="true">
+          <doc>Array of BAM files</doc>
+       </input>
+    </inputs>
+    <outputs>
+       <output name="array" type="BAM" array="true">
+          <doc>Array of aligned BAM files</doc>
+       </output>
+    </outputs>
+    <parameters>
+        <parameter name="options" type="string" default="">
+            <doc>
+				Options passed on to GSNAP command line. Overrides all other ways of specifying parameters. 
+            </doc>
+        </parameter>
+    </parameters>
+</component>

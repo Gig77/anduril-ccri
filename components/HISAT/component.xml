@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>HISAT</name>
+    <version>1.0</version>
+    <doc>
+	Hierarchical Indexing for Spliced Alignment of Transcripts
+    </doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Alignment</category>
+
+    <launcher type="bash">
+        <argument name="file" value="main.sh"/>
+    </launcher>
+
+    <requires>HISAT</requires>
+
+    <inputs>
+        <input name="reads" type="BinaryFile" array="false">
+            <doc>
+		BAM file containing reads for the alignment.
+            </doc>
+        </input>
+    </inputs>
+    <outputs>
+        <output name="alignment" type="BAM">
+            <doc>
+		(Sorted) alignment. A coordinate sorted file will be indexed, i.e. there is a .bai file.
+	    </doc>
+        </output>
+        <output name="log" type="BinaryFolder">
+            <doc>
+		Log files generated during alignment.
+	    </doc>
+        </output>
+    </outputs>
+    <parameters>
+        <parameter name="options" type="string" default="">
+            <doc>
+		Options passed on to HISAT command line. Overrides all other ways of specifying parameters. 
+            </doc>
+        </parameter>
+    </parameters>
+</component>
+

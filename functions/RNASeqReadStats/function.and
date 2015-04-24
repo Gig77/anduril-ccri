@@ -1,0 +1,44 @@
+function RNASeqReadStats {
+
+	// convert GTF file to set of BED files for read counting
+	bedAllExons = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedProteinCoding = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$3\t$4\t$5\n" if (/^(.*?)\t(protein_coding)\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedrRNA = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\trRNA\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	
+	bedArray = ArrayConstructor(file1=bedAllExons.optOut1, file2=bedProteinCoding.optOut1, file3=bedrRNA.optOut1, key1="allExons", key2="proteinCoding", key3="rRNA")
+	
+	counts = record()
+	for bam : std.iterArray(reads) {
+		count = BashEvaluate(
+			var1 = INPUT(path=bam.file, @keep=false), 
+			array1=bedArray,
+			param1=bam.key,
+		    script='''
+		    	bedFiles=( $( getarrayfiles array1 ) )		    
+		    	bedAllExons=${bedFiles[$( getarraykeyindex array1 allExons )]}
+		    	bedrRNA=${bedFiles[$( getarraykeyindex array1 rRNA )]}
+		    	bedProteinCoding=${bedFiles[$( getarraykeyindex array1 proteinCoding )]}
+		    	
+		    	countTotal=$(samtools view -c @var1@)
+		    	countPassFilter=$(samtools view -c -F 512 @var1@)
+		    	countMapped=$(samtools view -c -F 772 @var1@)
+		    	countAllExons=$(samtools view -c -F 772 @var1@ -L $bedAllExons)
+		    	countrRNA=$(samtools view -c -F 772 @var1@ -L $bedrRNA)
+		    	countNonrRNA=$(($countAllExons-$countrRNA))
+		    	countProteinCoding=$(samtools view -c -F 772 @var1@ -L $bedProteinCoding)
+		    	countUnique=$(samtools view -F 772 @var1@ -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	countNonDup=$(samtools view -F 1796 @var1@ -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	
+		    	echo -e "sample\ttotal\tpass-filter\tmapped\texonic\tnon-rRNA\tprotein\tuniquely mapped\tnon-duplicates" > @optOut1@
+		    	echo -e "@param1@\t$countTotal\t$countPassFilter\t$countMapped\t$countAllExons\t$countNonrRNA\t$countProteinCoding\t$countUnique\t$countNonDup" >> @optOut1@
+		    	''',
+		    	@name="count_"+bam.key,
+			@host="auto")
+		counts[bam.key] = count.optOut1
+	}
+	
+	combinedCounts = CSVListJoin(files=counts, fileCol="")
+	
+	return combinedCounts.join
+}
+

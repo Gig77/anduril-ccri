@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>RNASeqReadStats</name>
+    <version>1.0</version>
+    <doc>
+    	Provides global read count statistics for a set of BAM files containing aligned RNA-seq data.
+    </doc>
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>QC</category>
+    <inputs>
+       <input name="reads" type="BAM" array="true">
+          <doc>Array of BAM files</doc>
+       </input>
+       <input name="gtf" type="GTF" array="false">
+          <doc>GTF file with gene annotations.</doc>
+       </input>
+    </inputs>
+    <outputs>
+       <output name="counts" type="CSV">
+          <doc>CSV file with global read counts for each sample and category</doc>
+       </output>
+    </outputs>
+    <parameters>
+    </parameters>
+</component>

@@ -1,0 +1,12 @@
+function GSNAPAlignBams {
+
+	alignedBams = record()
+	for bam : std.iterArray(inputBAMs) {
+		@out.alignment.filename = bam.key+'.gsnap.sorted.dupmarked.bam'
+		gsnap = GSNAP(reads=INPUT(path=bam.file), options=options, @name=bam.key, @host="auto")
+		alignedBams[bam.key] = gsnap.alignment
+	}
+	
+	return std.makeArray(alignedBams)
+}
+

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>RNASeqReadStatsBarChart</name>
+    <version>1.0</version>
+    <doc>Bar chart of read count statistics determined with RNASeqReadStats</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>QC</category>
+
+    <launcher type="R">
+        <argument name="file" value="main.r"/>
+    </launcher>
+
+    <inputs>
+        <input name="stats" type="CSV" array="false">
+            <doc>Read count statistics returned by RNASeqReadStats</doc>
+        </input>
+    </inputs>
+    <outputs>
+		<output name="document" type="Latex">
+			<doc>Latex document with figure.</doc>
+		</output>
+    </outputs>
+    <parameters>
+        <parameter name="caption" type="string" default="RNA-seq read counts per sample and category. Samples sorted by number of uniquely mapping protein-coding reads in descending order.">
+            <doc>
+				Figure caption.
+            </doc>
+        </parameter>
+        <parameter name="samplesPerRow" type="int" default="8">
+            <doc>
+				Number of samples per row. The number of rows in the figure is then
+				calculated by dividing the total number of samples by the number specified here,
+				such that all samples are plotted on one page. 
+            </doc>
+        </parameter>
+        <parameter name="yMax" type="int" default="40">
+            <doc>
+				Maximum value on y-axis in million reads. 
+            </doc>
+        </parameter>
+    </parameters>
+</component>
+

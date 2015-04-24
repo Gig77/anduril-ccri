@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<project name="component-requirements" default="download" basedir=".">
+
+<description>${ant.project.name} deployer</description>
+
+<target name="setup" depends="download"/>
+
+<target name="download" description="Install input files needed by
+component"> <get
+src="http://csbi.ltdk.helsinki.fi/pub/anduril_static/component_data/CelllineQueryResources.RData"
+dest="CelllineQueryResources.RData" skipexisting="true" />
+</target>
+
+</project>
