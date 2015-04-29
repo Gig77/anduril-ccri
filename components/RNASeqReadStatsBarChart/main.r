@@ -48,8 +48,20 @@ execute <- function(cf) {
 	dev.off()
 	
 	# Prepare the document
-	document.out <- latex.figure(plot.file, caption=get.parameter(cf,'caption','string'))		    			    
-	latex.write.main(cf, 'document', document.out)
+	tex <- character()
+	section.title <- get.parameter(cf, 'sectionTitle')
+	section.type <- get.parameter(cf, 'sectionType')
+	caption <- get.parameter(cf,'caption','string')
+	myName <- get.metadata(cf, 'instanceName')
+	if (nchar(section.type) > 0) {
+		section.type=paste('\\',section.type,sep='') # if section type is defined, add escape in the beginning
+	}
+	if (nchar(section.title) > 0) {
+		tex <- c(tex, sprintf('%s{%s}\\label{%s}', section.type, section.title,	myName))
+	}
+	
+	tex <- c(tex, latex.figure(plot.file, caption=caption))		    			    
+	latex.write.main(cf, 'document', tex)
 	
 	return(0)
 }

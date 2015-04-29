@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>PGE</name>
+    <version>1.0</version>
+    <doc>Performs positional gene enrichment (PGE) as described in De Preter et al. (2008).(</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Enrichment</category>
+
+    <launcher type="bash">
+        <argument name="file" value="main.sh"/>
+    </launcher>
+
+    <inputs>
+        <input name="query" type="CSV" array="false">
+            <doc>
+				CSV file with query gene IDs in first column. IDs must match attribute 'gene id' in provided GTF file.
+            </doc>
+        </input>
+        <input name="reference" type="GTF" array="false">
+            <doc>
+				GTF file with all genes of reference genome in gzipped (.gz) format (background gene set).
+            </doc>
+        </input>
+    </inputs>
+    
+    <outputs>
+        <output name="enrichedRegions" type="CSV">
+            <doc>
+				Significantly enriched regions.
+	    	</doc>
+        </output>
+		<output name="document" type="Latex">
+			<doc>Latex document with ideogram figure.</doc>
+		</output>
+    </outputs>
+    
+    <parameters>
+        <parameter name="pvalue" type="float" default="0.05">
+            <doc>
+				Threshold for p-value significance. 
+            </doc>
+        </parameter>
+        <parameter name="caption" type="string" default="Genome-wide overview of positional gene enrichments (PGEs). Individual genes are indicated above chromosomes and significantly enriched regions below.">
+            <doc>
+				Figure caption.
+            </doc>
+        </parameter>
+        <parameter name="cmdPrefix" type="string" default="eval">
+            <doc>
+				Prefix put before issued system commands (e.g. docker string) 
+            </doc>
+        </parameter>
+		<parameter name="sectionTitle" type="string" default="Positional gene enrichment">
+			<doc>Title of the LaTeX section or an empty string to omit the section</doc>
+		</parameter>
+		<parameter name="sectionType" type="string" default="subsection">
+			<doc>Type of LaTeX section: usually one of section, subsection or subsubsection. No section statement is written if sectionTitle is empty.</doc>
+		</parameter>
+		<parameter name="maxRegionsPerChr" type="int" default="50">
+			<doc>Maximum number of regions per chromosome shown in ideogram. If the number of enriched regions is larger than this number,
+			     only the most significant regions are shown.
+			</doc>
+		</parameter>
+    </parameters>
+    
+</component>
+

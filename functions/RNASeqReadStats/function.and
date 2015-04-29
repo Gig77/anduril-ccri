@@ -10,7 +10,7 @@ function RNASeqReadStats {
 	counts = record()
 	for bam : std.iterArray(reads) {
 		count = BashEvaluate(
-			var1 = INPUT(path=bam.file, @keep=false), 
+			var1 = INPUT(path=bam.file), 
 			array1=bedArray,
 			param1=bam.key,
 		    script='''
@@ -19,21 +19,27 @@ function RNASeqReadStats {
 		    	bedrRNA=${bedFiles[$( getarraykeyindex array1 rRNA )]}
 		    	bedProteinCoding=${bedFiles[$( getarraykeyindex array1 proteinCoding )]}
 		    	
-		    	countTotal=$(samtools view -c @var1@)
-		    	countPassFilter=$(samtools view -c -F 512 @var1@)
-		    	countMapped=$(samtools view -c -F 772 @var1@)
-		    	countAllExons=$(samtools view -c -F 772 @var1@ -L $bedAllExons)
-		    	countrRNA=$(samtools view -c -F 772 @var1@ -L $bedrRNA)
+		    	# copy BAM file locally to not overallocate synology cifs
+		    	TMP=$(tempfile)
+		    	cp @var1@ $TMP
+		    	
+		    	countTotal=$(samtools view -c $TMP)
+		    	countPassFilter=$(samtools view -c -F 512 $TMP)
+		    	countMapped=$(samtools view -c -F 772 $TMP)
+		    	countAllExons=$(samtools view -c -F 772 $TMP -L $bedAllExons)
+		    	countrRNA=$(samtools view -c -F 772 $TMP -L $bedrRNA)
 		    	countNonrRNA=$(($countAllExons-$countrRNA))
-		    	countProteinCoding=$(samtools view -c -F 772 @var1@ -L $bedProteinCoding)
-		    	countUnique=$(samtools view -F 772 @var1@ -L $bedProteinCoding | grep "NH:i:1" | wc -l)
-		    	countNonDup=$(samtools view -F 1796 @var1@ -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	countProteinCoding=$(samtools view -c -F 772 $TMP -L $bedProteinCoding)
+		    	countUnique=$(samtools view -F 772 $TMP -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	countNonDup=$(samtools view -F 1796 $TMP -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	
+		    	rm $TMP
 		    	
 		    	echo -e "sample\ttotal\tpass-filter\tmapped\texonic\tnon-rRNA\tprotein\tuniquely mapped\tnon-duplicates" > @optOut1@
 		    	echo -e "@param1@\t$countTotal\t$countPassFilter\t$countMapped\t$countAllExons\t$countNonrRNA\t$countProteinCoding\t$countUnique\t$countNonDup" >> @optOut1@
 		    	''',
 		    	@name="count_"+bam.key,
-			@host="auto")
+		    	@cpu=5) // io intensive jos; limit slurm allocation by artifically high cpu count 
 		counts[bam.key] = count.optOut1
 	}
 	

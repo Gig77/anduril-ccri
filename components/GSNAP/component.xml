@@ -33,7 +33,12 @@
     <parameters>
         <parameter name="options" type="string" default="">
             <doc>
-		Options passed on to GSNAP command line. Overrides all other ways of specifying parameters. 
+				Options passed on to GSNAP command line. Overrides all other ways of specifying parameters. 
+            </doc>
+        </parameter>
+        <parameter name="cmdPrefix" type="string" default="">
+            <doc>
+				Prefix put before issued system commands (e.g. docker string) 
             </doc>
         </parameter>
     </parameters>

@@ -3,7 +3,7 @@ function GSNAPAlignBams {
 	alignedBams = record()
 	for bam : std.iterArray(inputBAMs) {
 		@out.alignment.filename = bam.key+'.gsnap.sorted.dupmarked.bam'
-		gsnap = GSNAP(reads=INPUT(path=bam.file), options=options, @name=bam.key, @host="auto")
+		gsnap = GSNAP(reads=INPUT(path=bam.file), options=options, cmdPrefix=cmdPrefix, @name=bam.key, @cpu=18, @memory=40000)
 		alignedBams[bam.key] = gsnap.alignment
 	}
 	
