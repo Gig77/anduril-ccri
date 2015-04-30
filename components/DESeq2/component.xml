@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>DESEq2</name>
+    <version>1.0</version>
+    <doc>Differential gene expression analysis with DESeq2</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Expression</category>
+
+    <launcher type="R">
+        <argument name="file" value="main.r"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="countFiles" type="TextFile" array="true">
+            <doc>Array of names of read count files</doc>
+        </input>
+
+        <input name="samples" type="CSV" array="false">
+            <doc>Sample names with group assignment.</doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+		<output name="results" type="CSV">
+			<doc>Differentially expressed genes.</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="nameControl" type="string">
+            <doc>
+				Name of control group.
+            </doc>
+        </parameter>
+
+        <parameter name="nameCase" type="string">
+            <doc>
+				Name of case group.
+            </doc>
+        </parameter>
+
+        <parameter name="label" type="string" default="">
+            <doc>
+            	Name of comparison. Will be appended to column names of output table to make them unique.
+            </doc>
+        </parameter>
+
+    </parameters>
+</component>
+

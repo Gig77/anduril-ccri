@@ -41,7 +41,7 @@
 				Threshold for p-value significance. 
             </doc>
         </parameter>
-        <parameter name="caption" type="string" default="Genome-wide overview of positional gene enrichments (PGEs). Individual genes are indicated above chromosomes and significantly enriched regions below.">
+        <parameter name="caption" type="string" default="Positional gene enrichment (PGE). Query genes indicated above chromosomes in red, significantly enriched regions below in blue.">
             <doc>
 				Figure caption.
             </doc>

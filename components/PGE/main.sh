@@ -48,6 +48,5 @@ echo '\includegraphics{'$(basename $PDF)'}' >> ${output_document}/document.tex
 echo '\end{center}' >> ${output_document}/document.tex
 echo "\caption{${CAPTION}}" >> ${output_document}/document.tex
 echo '\end{figure}' >> ${output_document}/document.tex
-echo '\clearpage' >> ${output_document}/document.tex
 
 
