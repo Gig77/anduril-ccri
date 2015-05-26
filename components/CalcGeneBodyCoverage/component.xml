@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>CalcGeneBodyCoverage</name>
+    <version>1.0</version>
+    <doc>RSeQC gene body coverage plot</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>QC</category>
+
+    <launcher type="bash">
+        <argument name="file" value="main.sh"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="bam" type="BAM" array="false">
+            <doc>
+				Aligned, sorted, and indexed BAM file.
+            </doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+        <output name="coverage" type="CSV">
+            <doc>
+				Gene body coverage for each percentile of gene body.
+	    	</doc>
+        </output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="docker" type="string">
+            <doc>
+            	If set, component will be executing within this docker image.
+            </doc>
+        </parameter>
+
+    </parameters>
+
+</component>
+

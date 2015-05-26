@@ -23,9 +23,9 @@
 				Options passed on to GSNAP command line. Overrides all other ways of specifying parameters. 
             </doc>
         </parameter>
-        <parameter name="cmdPrefix" type="string" default="">
+        <parameter name="docker" type="string">
             <doc>
-				Prefix put before issued system commands (e.g. docker string) 
+				If set, component will be executed within this docker image. 
             </doc>
         </parameter>
     </parameters>

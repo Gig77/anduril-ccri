@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
+         http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="comment"       for="graph" attr.name="comment" attr.type="string"/>
+  <key id="concentrate"   for="graph" attr.name="concentrate" attr.type="string"/>
+  <key id="pack"          for="graph" attr.name="pack" attr.type="string"/>
+  <key id="smoothing"     for="graph" attr.name="smoothing" attr.type="string"/>
+  <key id="BioentityId"   for="node" attr.name="BioentityId" attr.type="string"/>
+  <key id="EnsemblGeneId" for="node" attr.name="EnsemblGeneId" attr.type="string"/>
+  <key id="fillcolor"     for="node" attr.name="fillcolor" attr.type="string"/>
+  <key id="fontsize"      for="node" attr.name="fontsize" attr.type="double"/>
+  <key id="isHit"         for="node" attr.name="isHit" attr.type="string"/>
+  <key id="label"         for="node" attr.name="label" attr.type="string"/>
+  <key id="penwidth"      for="node" attr.name="penwidth" attr.type="string"/>
+  <key id="color"         for="node" attr.name="color" attr.type="string"/>
+  <key id="targetness"    for="node" attr.name="targetness" attr.type="double"/>
+  <key id="originalID"    for="node" attr.name="originalID" attr.type="string"/>
+  <key id="Keggonen"      for="edge" attr.name="Keggonen" attr.type="string"/>
+  <key id="LinkType"      for="edge" attr.name="LinkType" attr.type="string"/>
+  <key id="LinkTypeId"    for="edge" attr.name="LinkTypeId" attr.type="double"/>
+  <key id="arrowhead"     for="edge" attr.name="arrowhead" attr.type="string"/>
+  <key id="color"         for="edge" attr.name="color" attr.type="string"/>
+  <key id="weight"        for="edge" attr.name="weight" attr.type="double"/>
+  <graph id="pathway" edgedefault="directed">
+    <data key="comment">An empty Moksiskaan candidate pathway</data>
+  </graph>
+</graphml>

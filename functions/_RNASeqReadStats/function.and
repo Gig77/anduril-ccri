@@ -39,7 +39,7 @@ function RNASeqReadStats {
 		    	echo -e "@param1@\t$countTotal\t$countPassFilter\t$countMapped\t$countAllExons\t$countNonrRNA\t$countProteinCoding\t$countUnique\t$countNonDup" >> @optOut1@
 		    	''',
 		    	@name="count_"+bam.key,
-		    	@cpu=5) // io intensive jos; limit slurm allocation by artifically high cpu count 
+		    	@cpu=4) // io intensive job; limit slurm allocation by artifically high cpu count 
 		counts[bam.key] = count.optOut1
 	}
 	

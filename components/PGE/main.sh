@@ -7,7 +7,6 @@ export_command
 QUERY=$( getinput query )
 REFERENCE=$( getinput reference )
 PVALUE=$( getparameter pvalue )
-CMD_PREFIX=$( getparameter cmdPrefix )
 MAX_REGIONS=$( getparameter maxRegionsPerChr )
 TMPDIR=$( gettempdir )
 
@@ -17,7 +16,7 @@ TMPDIR=$( gettempdir )
 set -ex
 zcat ${REFERENCE} | perl -ne 'print "$4\t$1\t$2\t$3\n" if (/^([^\t]+).*\tgene\t(\d+)\t(\d+)\t.*gene_id "([^"]+)/)' > ${TMPDIR}/reference.txt
 #sleep $[ ( $RANDOM % 30 )  + 1 ]
-$(eval echo $CMD_PREFIX) "cat ${QUERY} | sed '1d' | sed 's/\"//g' | perl pge.pl -g -a ${PVALUE} -r user -f ${TMPDIR}/reference.txt -q - > ${output_enrichedRegions}.part"
+cat ${QUERY} | sed '1d' | sed 's/\"//g' | perl pge.pl -g -a ${PVALUE} -r user -f ${TMPDIR}/reference.txt -q - > ${output_enrichedRegions}.part
 cat ${output_enrichedRegions}.part | (read -r; printf "%s\n" "$REPLY"; sort -k 4g) > ${output_enrichedRegions} # sort by p-value ascending
 rm ${output_enrichedRegions}.part
 
@@ -25,7 +24,7 @@ rm ${output_enrichedRegions}.part
 mkdir -p ${output_document}
 PDF=${output_document}/ideogram_${metadata_instanceName}.pdf
 #sleep $[ ( $RANDOM % 30 )  + 1 ]
-$(eval echo $CMD_PREFIX) "Rscript ideogram.r --query ${QUERY} --reference ${TMPDIR}/reference.txt --regions ${output_enrichedRegions} --output ${PDF} --maxRegionsPerChr ${MAX_REGIONS}"
+Rscript ideogram.r --query ${QUERY} --reference ${TMPDIR}/reference.txt --regions ${output_enrichedRegions} --output ${PDF} --maxRegionsPerChr ${MAX_REGIONS}
 
 # latex report
 rm -f ${output_document}/document.tex

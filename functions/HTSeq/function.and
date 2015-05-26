@@ -1,16 +1,19 @@
 function HTSeq {
 
     readCounts  = {}
-    for r: std.iterArray(alignments) {
-	    s = r.key
-	    sName = std.quote(s, type="Anduril")
+    for sample, bam : alignments 
+    {
+	    sName = std.quote(sample, type="Anduril")
 	    @out.optOut1.filename = sName+'.htseq.counts'
-        count = BashEvaluate(var1 = alignments[s],
-        				     var2 = annotationGTF @require,
-                             param1 = options,
-                             script = "htseq-count -f bam $(echo @param1@) @var1@ @var2@ | grep -v '^__' > @optOut1@",
-                             @name = sName)
-        readCounts[s] = count.optOut1
+        count = BashEvaluate
+        (
+        	var1 = bam,
+			var2 = annotationGTF @require,
+			param1 = options,
+			script = "htseq-count -f bam $(echo @param1@) @var1@ @var2@ | grep -v '^__' > @optOut1@",
+			@name = sName
+		)
+        readCounts[sample] = count.optOut1
     }
 
     return std.makeArray(readCounts)

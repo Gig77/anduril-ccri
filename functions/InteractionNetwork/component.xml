@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+
+    <name>InteractionNetwork</name>
+
+    <version>1.0</version>
+
+    <doc>
+    	Produces an interaction network between input genes based on interactions stored in the Moksiskaan database. This component
+    	is based on CandidateReport from Marko Laasko.
+    </doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+
+    <category>Moksiskaan</category>
+    <category>Pathway</category>
+    <category>Reporting</category>
+
+    <inputs>
+
+       <input name="genes" type="IDList">
+          <doc>Set of input genes as Ensembl stable identifiers</doc>
+       </input>
+
+       <input name="moksiskaan" type="Properties" optional="true">
+          <doc>JDBC connection for Moksiskaan database</doc>
+       </input>
+
+       <input name="ensembl" type="Properties" optional="true">
+          <doc>JDBC connection for Ensembl database</doc>
+       </input>
+
+       <input name="status" type="ActivityTable" optional="true">
+          <doc>Status information for the genes</doc>
+       </input>
+
+       <input name="corrData" type="Matrix" optional="true">
+          <doc>Gene activity measurements for the correlation analysis</doc>
+       </input>
+
+    </inputs>
+
+    <outputs>
+
+       <output name="report" type="Latex">
+          <doc>Characterization of the given gene set</doc>
+       </output>
+
+       <output name="pathway" type="GraphML">
+          <doc>Pathway topology for the candidate pathway</doc>
+       </output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="organism" type="int" default="9606">
+            <doc>Organism of interest defined by NCBI Taxonomy identifier.
+                 Default is Homo sapiens.</doc>
+        </parameter>
+
+        <parameter name="linkTypes" type="string" default="defaults">
+            <doc>A comma separated list of identifiers of link types of interest or
+                 'defaults' for the predefined set of supported links</doc>
+        </parameter>
+
+        <parameter name="bioentityTypes" type="string" default="">
+            <doc>A comma separated list of bioentity types of interest.
+                 An empty string refers to genes.
+            </doc>
+        </parameter>
+
+        <parameter name="annotRules" type="string" default="">
+            <doc>A comma separated list of optional link annotation rules.
+                 Only those links are used that match at least one of the given rules.
+                 Each rule is represented by a 'name=value' pair or a plain name if all values are accepted.
+                 Values are in SQL LIKE syntax.</doc>
+        </parameter>
+
+        <parameter name="maxGap" type="int" default="1">
+            <doc>Maximum number of genes between any two candidate genes
+                 in their interaction network</doc>
+        </parameter>
+
+        <parameter name="hideGaps" type="boolean" default="false">
+            <doc>Disables the rendering of the genes other than the given candidates</doc>
+        </parameter>
+
+        <parameter name="isolateGroupNames" type="boolean" default="false">
+            <doc>Combined nodes of the pathway graph are labelled with artificial names described
+                 in a separate table. This approach reduces the complexity of the actual figure.</doc>
+        </parameter>
+
+        <parameter name="expand" type="string" default="connected">
+            <doc>Selection criterion for the related genes as described in CandidatePathway component.</doc>
+        </parameter>
+
+        <parameter name="statusFilter" type="string" default="">
+            <doc>A comma separated list of gene statuses (NA,-1,0,1) of the genes that shall be
+                 excluded from the candidate pathway if the status information is provided</doc>
+        </parameter>
+
+        <parameter name="useStudies" type="string" default="*">
+            <doc>A comma separated list of study identifiers of the possibly interesting
+                 results. An asterisk refers to all possible studies available.
+                 An empty string disables the listing of relevant studies for the genes</doc>
+        </parameter>
+
+        <parameter name="showPathways" type="string" default="WikiPathways">
+            <doc>A comma separated list of LinkAnnotation names providing pathway IDs.
+                 The links provided by these pathway sources are shown on separate tables.</doc>
+        </parameter>
+
+        <parameter name="corrLimit" type="float" default="0.3">
+            <doc>Absolute value of the correlation coefficient must be greater than this limit
+                 it the correlation data is used to prune the candidate pathway.</doc>
+        </parameter>
+
+        <parameter name="cytoscape" type="boolean" default="false">
+            <doc>Create a Cytoscape session for the candidate pathway and attach it to the report.</doc>
+        </parameter>
+
+        <parameter name="pathwayDesc" type="string" default="">
+            <doc>An additional text that will follow the figure caption of the candidate pathway.</doc>
+        </parameter>
+
+        <parameter name="title" type="string">
+            <doc>Latex section title for report.</doc>
+        </parameter>
+
+        <parameter name="sectionType" type="string" default="subsection">
+            <doc>Latex section type for report.</doc>
+        </parameter>
+
+    </parameters>
+</component>

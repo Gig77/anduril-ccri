@@ -38,7 +38,7 @@ execute <- function(cf) {
 		axis(side=2, at=seq(0, ymax, by=1), labels=NA, tck=-0.01)
 		axis(side=2, at=seq(0, ymax, by=5), labels=seq(0, ymax, by=5), mgp=c(3,0.7,0), las=2)		
 	}
-	mtext("number of reads x 1,000,000", outer=TRUE, 2)
+	mtext("Number of reads x 1,000,000", outer=TRUE, 2)
 	
 	# create invisible overlay plot to put legend on top into outer margin
 	par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)

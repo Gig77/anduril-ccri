@@ -2,6 +2,7 @@
 <component>
     <name>HTSeq</name>
     <version>1.0</version>
+
     <doc>
     For obtaining read counts at gene level from RNA-Seq alignment files. Basic re-implementation of HTSeqBam2Counts which allows
     to directly pass on command-line parameters to htseq-count and to be run on remote execution hosts in parallel. 
@@ -9,26 +10,37 @@
     in the function call which then determines the single host on which all internal component calls are executed 2) 
     ArrayCombiner throws an error when run on a remote host ("[...]_index (No such file or directory)").
    </doc>
+
     <author email="christian.frech@ccri.at">Christian Frech</author>
 
     <inputs>
+
     	<input name="alignments" type="BAM" array="true" optional="false">
             <doc>The aligned RNA-seq reads in sorted BAM format.</doc>
         </input>
+
         <input name="annotationGTF" type="GTF" optional="false">
             <doc>Gene annotation file in GTF format.</doc>
         </input>
+
     </inputs>
+
     <outputs>
+
         <output name="counts" type="TextFile" array="true">
              <doc>Array of gene counts for each alignment file.</doc>
          </output>
+
     </outputs>
+
     <parameters>
+
         <parameter name="options" type="string" default="">
             <doc>
 				Options passed on to HTSeq command line. Overrides all other ways of specifying parameters. 
             </doc>
         </parameter>
+
     </parameters>
+
 </component>

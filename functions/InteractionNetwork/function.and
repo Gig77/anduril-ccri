@@ -1,0 +1,601 @@
+function InteractionNetwork 
+{
+
+	// -------------------------------------------------------------------------------------------------------
+
+	function crPathwayProcessing
+	(
+		GraphML                graph,
+		GraphML                legend,
+		CSV                    edgeAttributes,
+		CSV                    vertexAttributes,
+		CSV                    refAnnotTable,
+		optional Properties    moksiskaan,
+		optional Properties    ensembl,
+		optional ActivityTable statusCode,
+		optional GraphML       corrGraph,
+		int                    organism,
+		boolean                useCytoscape,
+		string                 useStudies,
+		string                 addCaption,
+		string                 layout,
+		string                 expand,
+		int                    maxGap
+	) -> 
+	(
+		Latex                  report,
+		GraphML                pathway
+	) 
+	{
+		metadata = std.metadata()
+
+		/** Some decorative attributes for the candidate pathway graph */
+		cpGraphAttributes = INPUT(path="CPGraphAttributes.csv")
+
+		geneAnnot = KorvasieniAnnotator
+		(
+			sourceKeys  = vertexAttributes,
+			connection  = ensembl,
+			inputType   = "Gene",
+			inputDB     = ".GeneId",
+			targetDB    = ".DNARegion,.GeneDesc,GO",
+			keyColumn   = "EnsemblGeneId",
+			echoColumns = "label,isHit",
+			rename      = "label=name,.GeneDesc=description",
+			skipLevel   = "source"
+		)
+
+		intermedData  = TableQuery
+		(
+			table1 = geneAnnot @require,
+			query  = 
+				"""\
+				SELECT "EnsemblGeneId" AS ".GeneId",
+				       "name",
+					   "description"||' locus='||".DNARegion" AS "description"
+				FROM   table1 
+				WHERE (NOT "isHit") 
+				ORDER BY "name"
+				""")
+				
+		if (useStudies == "") 
+		{
+			intermedTable = CSV2Latex
+			(
+				tabledata = intermedData,
+				refs      = refAnnotTable,
+				columns   = "name,description",
+				colFormat = "p{1.2cm}p{17cm}",
+				caption   = "List of intermediated genes between DEGs. ",
+				countRows = true,
+				skipEmpty = true
+			)
+		} 
+		else 
+		{
+			// Lists of matching studies...
+			getStudies = PiispanhiippaAnnotator
+			(
+				sourceKeys = intermedData,
+				connection = moksiskaan,
+				inputDB    = XrefType_Ensembl_gene,
+				organism   = organism,
+				targetDB   = "HitStudyId,HitStudyName,HitEvidence"
+			)
+
+			if (useStudies == "*") 
+			{
+				studyLimit = ""
+			} 
+			else 
+			{
+				studyLimit = "WHERE (CAST(\"HitStudyId\" AS INTEGER) IN ("+useStudies+")) "
+			}
+       
+			intermedStudy = TableQuery
+			(
+				table1 = intermedData             @require,
+				table2 = getStudies.bioAnnotation @require,
+				query  = 
+					"""\
+					SELECT G.*, S."studies"
+					FROM   table1 AS G 
+						LEFT OUTER JOIN (
+							SELECT "sourceKey",
+								   GROUP_CONCAT(CASEWHEN("HitEvidence"='t',CAST('' AS VARCHAR(1)),'-')||"HitStudyName" ORDER BY "HitStudyName" SEPARATOR ',') AS "studies"
+							FROM   table2 """+studyLimit+"""
+							GROUP  BY "sourceKey"
+						) AS S ON (S."sourceKey" = G.".GeneId")
+					ORDER  BY 2
+					"""
+			)
+
+			intermedTable = CSV2Latex
+			(
+				tabledata = intermedStudy,
+				refs      = refAnnotTable,
+				columns   = "name,description,studies",
+				colFormat = "p{1.2cm}p{13cm}p{4cm}",
+				listCols  = "studies",
+				caption   = "Descriptions of the intermediated genes between the candidate genes. "+
+							"Studies that have reported results about the candidate genes are listed so that "+
+							"those with negative evidence have been prefixed with a hyphen.",
+				countRows = true,
+				skipEmpty = true
+			)
+		}
+
+		pathwayMetrics = GraphMetrics(graph = graph)
+		degreeDef = '(M."OutDegree"/(0.0+M."InDegree"+M."OutDegree"))'
+		
+		pathwayDegree = TableQuery
+		(
+			table1 = pathwayMetrics.vertexMetrics @require,
+			table2 = vertexAttributes             @require,
+			table3 = geneAnnot                    @require,
+			query  = 
+				"""
+				SELECT M."Vertex",
+				CASEWHEN(G."isHit"='true', '0.0,'||"""+degreeDef+"""||',1.0', G."fillcolor") AS "fillcolor",
+				"""+degreeDef+""" AS "targetness",
+				A."description", A."GO"
+				FROM   table1 M, table2 G, table3 A
+				WHERE  (G."originalID" = M."Vertex") AND (G."EnsemblGeneId" = A."EnsemblGeneId")
+				"""
+		)
+    
+		pathwayAnnot = GraphAnnotator
+		(
+			graph            = graph,
+			graphAttributes  = cpGraphAttributes,
+			vertexAttributes = pathwayDegree.table
+		)
+		
+		nodeJoin = VertexJoin
+		(
+			graph    = pathwayAnnot.graph,
+			idPrefix = "group",
+			nameAsID = isolateGroupNames
+		)
+
+		pathwayPlot = GraphVisualizer
+		(
+			graph          = nodeJoin.graph,
+			layout         = layout,
+			titleAttribute = "GeneName",
+			reportHeight   = 23,
+			reportWidth    = 18
+		)
+
+		if ((expand == "up") || (expand == "down")) 
+		{
+			methodLegend = "The network is expanded by genes "+maxGap+" step(s) "+
+						   expand+"stream of DEGs. These intermediate "+expand+"stream genes are shown in gray."
+		} 
+		else if (expand == "both") 
+		{
+			methodLegend = "The network is expanded by genes "+maxGap+" step(s) "+
+							"up- or downstream of DEGs. These intermediate genes are shown in gray."
+		} 
+		else 
+		{
+			methodLegend = "A maximum of " + maxGap + " intermediate gene(s) is/are allowed between significantly DEGs "+
+                           "and these intermediate genes are shown in gray."
+		}
+		
+		pathwayLegend = GraphVisualizer
+		(
+			graph         = legend,
+			layout        = "hierarchical",
+			reportHeight  = 4,
+			reportWidth   = 18,
+			reportCaption = title + ". Gene background colors reflect ratios of input to output connections, whereas "+
+							"genes with only output connections are shown in red, genes with only input connections are white, and ratios other than these two extremes are assigned color shadings in-between. "+
+							methodLegend+addCaption
+		)
+		
+		plotRef = "fig:"+metadata.instanceName+"-pathwayLegend"
+		reportOut = { pathwayPlot.figure, pathwayLegend.figure }
+		
+		if (useCytoscape) 
+		{
+			cytoscape = Pathway2Cytoscape
+			(
+				pathway     = pathwayAnnot.graph,
+				groups      = nodeJoin.joins,
+				title       = "Moksiskaan candidate pathway",
+				vertexCopy  = "BioentityId,EnsemblGeneId,GO,description,isPredicted",
+				tooltipAttr = "description"
+			)
+			
+			files = LatexAttachment
+			(
+				file1    = cytoscape.session,
+				caption1 = 'You may use this \href{http://www.cytoscape.org/}{Cytoscape} session '+
+							'to browse the interaction network interactively.')
+				reportOut["Cytoscape"] = files.report
+			}
+			
+			if (isolateGroupNames) 
+			{
+				addCaption = ' Nodes that share all their connections and properties are combined in order to '+
+							 'reduce the complexity of the graph. The joint nodes are labeled as $group\#$ and the participating '+
+							 'entities are described in Table~\ref{table:'+metadata.instanceName+'-groupTable}.'+
+							 addCaption
+       
+				groupTable = CSV2Latex
+				(
+					tabledata = nodeJoin.joins,
+					caption   = 'This table describes the actual genes of each set of combined nodes in '+
+								'Figure~\ref{fig:'+metadata.instanceName+'-pathwayLegend}.',
+					colFormat = "p{1cm}p{15cm}",
+					columns   = "ID,Members",
+					listCols  = "Members"
+				)
+				reportOut["groups"] = groupTable
+		}
+		
+		if (corrGraph != null) 
+		{
+			corrDoc = GraphVisualizer
+			(
+				graph         = corrGraph,
+				reportCaption = 'Observed correlations for the candidate pathway (Figure~\ref{'+plotRef+'}).',
+				reportHeight  = 23,
+				reportWidth   = 18,
+				layout        = layout
+			)
+			reportOut["correlation"] = corrDoc
+		}
+		reportOut["intermed"] = intermedTable
+
+		pathwayIdMap = 
+		{
+			"Keggonen"     = {"id"   = XrefType_KEGG_pathway, "name" = "KEGG", "ref"  = "Kanehisa2011"},
+			"WikiPathways" = {"id"   = XrefType_WikiPathways, "name" = "WikiPathways","ref"  = "Kelder2012"}
+		}
+		
+		paramLength = std.length(showPathways)
+		for pwName, pwRec: pathwayIdMap 
+		{
+			if (paramLength > std.length(std.strReplace(showPathways, "(,|^)"+pwName+"(,|$)", ""))) 
+			{
+				pathwayDist = IDDistribution
+				(
+					table1        = edgeAttributes,
+					columnIn      = pwName,
+					columnOut     = "pathway",
+					acceptMissing = true,
+					@name         = "pathwayDist_"+pwName
+				)
+				
+				genePathways = PiispanhiippaAnnotator
+				(
+					sourceKeys = vertexAttributes,
+					connection = moksiskaan,
+					inputDB    = "BioentityId",
+					keyColumn  = "BioentityId",
+					reverse    = true,
+					organism   = organism,
+					linkTypes  = LinkType_pathway_contains,
+					targetDB   = pwRec.id,
+					@name      = "genePathways_"+pwName
+				)
+				
+				geneNames = TableQuery
+				(
+					table1 = vertexAttributes           @require,
+					table2 = genePathways.bioAnnotation @require,
+					query  = 
+						"""\
+						SELECT P."xref"""+pwRec.id+"""" AS "pathway",
+							   G."EnsemblGeneId"        AS "ensg",
+							   G."label"                AS "gene"
+						FROM   table1 G, table2 P
+						WHERE  (G."BioentityId" = P."sourceKey")
+						ORDER  BY 3
+						""",
+					@name  = "geneNames_"+pwName
+				)
+
+				genePWLists = ExpandCollapse
+				(
+					geneNames, 
+					expand=false, 
+					listCols="ensg,gene", 
+					@name="genePWLists_" + pwName
+				)
+				
+				pathwayNames = PiispanhiippaAnnotator
+				(
+					sourceKeys = pathwayDist.ids,
+					connection = moksiskaan,
+					inputDB    = pwRec.id,
+					organism   = organism,
+					targetDB   = "BioentityName",
+					@name      = "pathwayNames_"+pwName
+				)
+				
+				pathwayTableSelect = TableQuery
+				(
+					table1 = pathwayDist.ids            @require,
+					table2 = pathwayNames.bioAnnotation @require,
+					table3 = genePWLists.relation       @require,
+					query  = 
+						"""\
+						SELECT D."pathway"       AS "ID",
+							   N."BioentityName" AS "name",
+							   D."freq"          AS "edges",
+							   G."ensg"          AS "ensembl",
+							   G."gene"          AS "genes"
+						FROM   table1 D, table2 N, table3 G
+						WHERE  (D."pathway" = N."sourceKey") AND
+						(D."pathway" = G."pathway")
+						ORDER  BY 3 DESC
+						""",
+						@name  = "pathwayTableSelect_" + pwName
+				)
+				
+				pathwayTableRefs = XrefLinkRule
+				(
+					moksiskaan = moksiskaan,
+					columns    = "ID=name,ensembl=genes",
+					xrefTypes  = pwRec.id+","+XrefType_Ensembl_gene,
+					@name      = "pathwayTableRefs_"+pwName,
+					@doc       = "Hyperlink template for the "+pwRec.name+" table."
+				)
+				
+				pathwayTable = CSV2Latex
+				(
+					tabledata = pathwayTableSelect,
+					refs      = pathwayTableRefs,
+					colFormat = "p{6cm}rp{11cm}",
+					columns   = "name,edges,genes",
+					listCols  = "ensembl,genes",
+					skipEmpty = true,
+					caption   = 'List of '+pwRec.name+'~\cite{'+pwRec.ref+'} pathways supporting the interactions '+
+								'shown in Figure~\ref{'+plotRef+'}. '+
+								'The number of interactions supported by each pathway is shown in the edges column.',
+					@name     = "pathwayTable_"+pwName
+				)
+				reportOut[pwName] = pathwayTable.report
+			} 
+			else 
+			{
+				std.echo("* No pathway summary for", pwRec.name, "in", metadata.instanceName)
+			}
+		}
+
+		report = LatexCombiner(array = reportOut)
+		
+		return record
+		(
+			report=report, 
+			pathway=pathwayAnnot.graph
+		)
+	}
+  
+	// -------------------------------------------------------------------------------------------------------
+
+	function crInvalidPathwaySize(string messageDir) -> (Latex report, GraphML pathway) 
+	{
+		/** A constant \LaTeX{} fragment describing the problem with the pathway size. */
+		message = INPUT(path=messageDir)
+		
+		/** An empty pathway graph */
+		nosteps = INPUT(path="emptyPathway.xml")
+		
+		return record( report=message, pathway=nosteps )
+	}
+
+  // -------------------------------------------------------------------------------------------------------
+
+	/** Visualization configuration for the gene interactions */
+ 	linkStyles = INPUT(path="LinkTypeProperties.csv")
+
+	refAnnotTable = XrefLinkRule
+	(
+		moksiskaan = moksiskaan,
+		xrefTypes  = XrefType_Ensembl_gene,
+		columns    = ".GeneId=name"
+	)
+
+	if (linkTypes == "defaults") 
+	{
+		linkTypes = std.concat(
+                 LinkType_protein_activation,
+                 LinkType_protein_inhibition,
+                 LinkType_protein_state_change,
+                 LinkType_protein_binding,
+                 LinkType_protein_dissociation,
+                 LinkType_gene_expression,
+                 LinkType_gene_repression,
+                 LinkType_phosphorylation,
+                 LinkType_dephosphorylation,
+                 LinkType_glycosylation,
+                 LinkType_ubiquitination,
+                 LinkType_deubiquitination,
+                 LinkType_methylation,
+                 LinkType_demethylation,
+                 LinkType_acetylation,
+                 LinkType_deacetylation,
+                 LinkType_sumoylation,
+                 LinkType_desumoylation,
+                 LinkType_pathway_precedence,
+                 LinkType_chemical_reaction,
+                 sep = ",")
+	}
+
+	gapProps = "fillcolor=#AAAAAA,fontsize=8,isHit=false"
+	if (hideGaps) 
+	{
+		gapProps = gapProps+",shape=point"
+		layout   = "circular"
+	} 
+	else 
+	{
+		layout   = "spring2"
+	}
+
+	prePathway = CandidatePathway
+	(
+		hits           = genes,
+		linkStyles     = linkStyles,
+		maxGap         = maxGap,
+		organism       = organism,
+		xrefType       = XrefType_Ensembl_gene,
+		gapProperties  = gapProps,
+		hitProperties  = "fillcolor=#FFFFFF,isHit=true",
+		linkTypes      = linkTypes,
+		bioentityTypes = bioentityTypes,
+		annotRules     = annotRules,
+		expand         = expand
+	)
+	
+	if (corrData == null) 
+	{
+		corrGraph = record(connections=null)
+	} 
+	else 
+	{
+		corrGraph = CorrelationGraph
+		(
+			pathway  = prePathway.graph,
+			data     = corrData,
+			idAttrib = "EnsemblGeneId",
+			pLimit   = 0.01,
+			rDownMax = -1*corrLimit,
+			rUpMin   = corrLimit
+		)
+
+		corrGenes = CSV2IDList
+		(
+			table1   = corrGraph.entities @require,
+			table2   = corrGraph.skipped  @require,
+			columnIn = "BioentityId,BioentityId"
+		)
+
+		corrPathway = CandidatePathway
+		(
+			hits           = genes,
+			within         = corrGenes,
+			linkStyles     = linkStyles,
+			maxGap         = maxGap,
+			organism       = organism,
+			xrefType       = XrefType_Ensembl_gene,
+			gapProperties  = gapProps,
+			hitProperties  = "fillcolor=#FFFFFF,isHit=true",
+			linkTypes      = linkTypes,
+			bioentityTypes = bioentityTypes,
+			annotRules     = annotRules,
+			expand         = expand
+		)
+     
+		prePathway = corrPathway
+	}
+	
+	if (status == null)
+	{
+		/** Standard columns for the status file that does not exist */
+		statusCode = StringInput(content=".GeneId\tstatus\tcode")
+		sCaption   = ""
+		pathway    = prePathway
+		addCaption = "" // No additional caption text
+	} 
+	else 
+	{
+		/** Regulatory functions associated to the link types */
+		linkFunctions = INPUT(path="LinkTypeFunctions.csv")
+     
+		pathway = ExpressionGraph
+		(
+			graph        = prePathway.graph,
+			status       = status,
+			linkTypes    = linkFunctions,
+			statusFilter = statusFilter
+		)
+
+		sCaption   = " Expression states of genes are shown as: $a$=absent, $d$=down regulated, $u$=up regulated, $s$=stable."
+		addCaption = ' Green and blue borders are referring to \textcolor{green}{up} and'+
+					 ' \textcolor{blue}{down} regulated genes, respectively.'+
+					 ' Light grey is used to emphasize \textcolor[rgb]{0.6,0.6,0.6}{stably} expressed genes.'
+		addCaption = addCaption + " Known interactions are shown with bold borders whereas the predictions are kept thin."
+	}
+	
+	if (pathwayDesc != "") 
+	{
+		addCaption = addCaption + " " + pathwayDesc
+	}
+	
+	pathwayProps = GraphAnnotator(graph=pathway.graph)
+
+	// Conditional processing of the pathway graph...
+	nodeCount = RowCount(pathwayProps.vertexAttributes, limit1=1, limit2=900)
+
+	@out.itemA.filename = "report"
+	@out.itemB.filename = "pathway.xml"
+  
+	pathwayReport = switch nodeCount 
+	{
+		/** Error message for too few links between the nodes */
+		case small = crInvalidPathwaySize(messageDir="tooFew")
+
+		/** Accept this graph for the analysis */
+		case medium = crPathwayProcessing
+		(
+			pathway.graph,
+			prePathway.legend,
+			pathwayProps.edgeAttributes,
+			pathwayProps.vertexAttributes,
+			refAnnotTable,
+			moksiskaan,
+			ensembl,
+			corrGraph.connections,
+			organism     = organism,
+			useCytoscape = cytoscape,
+			useStudies   = useStudies,
+			addCaption   = addCaption,
+			layout       = layout,
+			expand       = expand,
+			maxGap       = maxGap
+		)
+
+		/** Error message for too many links between the nodes */
+		case large = crInvalidPathwaySize(messageDir="tooMany")
+
+		return ExclusiveCombiner
+		(
+			item1A=small.report,  item2A=medium.report,  item3A=large.report,
+			item1B=small.pathway, item2B=medium.pathway, item3B=large.pathway, 
+			prefer=2
+		)
+	}
+
+	candiKorva = StringInput(content="entry\tindicator\t.GeneId\t.GeneName\t.DNARegion\t.DNABand\t.Biotype\t.GeneDesc\tGO\n")
+	candiKorva.bioAnnotation = candiKorva.in
+
+	// Lists of matching studies...
+	getStudies = PiispanhiippaAnnotator
+	(
+		sourceKeys = genes,
+		connection = moksiskaan,
+		inputDB    = XrefType_Ensembl_gene,
+		organism   = organism,
+		targetDB   = "HitStudyId,HitStudyName,HitEvidence"
+	)
+
+	report = LatexCombiner
+	(
+		pathwayReport.itemA,
+		sectionTitle = title,
+		sectionType  = sectionType,
+		pagebreak    = true,
+		tail         = "\\clearpage{}"
+	)
+
+	return record
+	(
+		report        = report,
+		pathway       = pathwayReport.itemB
+	)
+}

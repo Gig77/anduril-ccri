@@ -36,32 +36,39 @@
     </outputs>
     
     <parameters>
+    
         <parameter name="pvalue" type="float" default="0.05">
             <doc>
 				Threshold for p-value significance. 
             </doc>
         </parameter>
+    
         <parameter name="caption" type="string" default="Positional gene enrichment (PGE). Query genes indicated above chromosomes in red, significantly enriched regions below in blue.">
             <doc>
 				Figure caption.
             </doc>
         </parameter>
-        <parameter name="cmdPrefix" type="string" default="eval">
+
+        <parameter name="docker" type="string">
             <doc>
-				Prefix put before issued system commands (e.g. docker string) 
+				If set, component will be executed within this docker image. 
             </doc>
         </parameter>
+
 		<parameter name="sectionTitle" type="string" default="Positional gene enrichment">
 			<doc>Title of the LaTeX section or an empty string to omit the section</doc>
 		</parameter>
+
 		<parameter name="sectionType" type="string" default="subsection">
 			<doc>Type of LaTeX section: usually one of section, subsection or subsubsection. No section statement is written if sectionTitle is empty.</doc>
 		</parameter>
+
 		<parameter name="maxRegionsPerChr" type="int" default="50">
 			<doc>Maximum number of regions per chromosome shown in ideogram. If the number of enriched regions is larger than this number,
 			     only the most significant regions are shown.
 			</doc>
 		</parameter>
+
     </parameters>
     
 </component>
