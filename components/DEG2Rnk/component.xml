@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>DEG2Rnk</name>
+    <version>1.0</version>
+    <doc>Takes gene expression values and produces ranked list of genes (.rnk file) that can be fed into a pre-ranked GSEA analysis.</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Expression</category>
+
+    <launcher type="R">
+        <argument name="file" value="main.r"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="deg" type="CSV">
+            <doc>Genes with expression values as produced by DESeq2</doc>
+        </input>
+
+        <input name="annotation" type="CSV">
+            <doc>Annotation table to translate gene IDs into gene names (HGNC). The first column is assumed to contain the IDs, the second the names.</doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+		<output name="rnk" type="CSV">
+			<doc>List of genes ranked by -log10(pvalue), with the correct sign for genes expressed into different directions (up or down).</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="colP" type="string" default="p">
+            <doc>
+				Name of column containing p-value.
+            </doc>
+        </parameter>
+
+        <parameter name="colFC" type="string" default="fc">
+            <doc>
+				Name of column containing fold change.
+            </doc>
+        </parameter>
+
+        <parameter name="minP" type="float" default="1">
+            <doc>
+				Minimum p-value for a gene to include in output.
+            </doc>
+        </parameter>
+
+    </parameters>
+    
+</component>
