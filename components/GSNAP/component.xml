@@ -21,13 +21,8 @@
     <outputs>
         <output name="alignment" type="BAM">
             <doc>
-		(Sorted) alignment. A coordinate sorted file will be indexed, i.e. there is a .bai file.
-	    </doc>
-        </output>
-        <output name="log" type="BinaryFolder">
-            <doc>
-		Log files generated during alignment.
-	    </doc>
+            	(Sorted) alignment. A coordinate sorted file will be indexed, i.e. there is a .bai file.
+			</doc>
         </output>
     </outputs>
     <parameters>

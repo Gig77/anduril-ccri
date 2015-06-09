@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>DESEq2ClusterHeatmap</name>
+    <version>1.0</version>
+    <doc>Cluster heatmap of samples</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+
+    <category>Expression</category>
+
+    <launcher type="R">
+        <argument name="file" value="main.r"/>
+    </launcher>
+
+	<inputs>
+		<input name="geneCounts" type="TextFile" array="true">
+			<doc>Text files with gene counts</doc>
+		</input>
+	</inputs>
+	
+	<outputs>
+	
+		<output name="report" type="Latex">
+			<doc>Clustering report</doc>
+		</output>
+	
+	</outputs>
+
+    <parameters>
+
+        <parameter name="caption" type="string" default = "Cluster heatmap of sample-to-sample distances. Blue and red indicates high and low similarity between samples, respectively.">
+            <doc>
+				Figure caption of cluster heatmap.
+            </doc>
+        </parameter>
+
+        <parameter name="sectionTitle" type="string">
+            <doc>
+				Section title.
+            </doc>
+        </parameter>
+
+        <parameter name="sectionType" type="string" default="subsection">
+            <doc>
+				Section type.
+            </doc>
+        </parameter>
+
+        <parameter name="rlog" type="boolean" default="false">
+            <doc>
+				If true, cluster heatmap based on regularized log (rlog) transformation is included in report. 
+            </doc>
+        </parameter>
+
+        <parameter name="vst" type="boolean" default="true">
+            <doc>
+				If true, cluster heatmap based on variant stabilizing transformation (VST) is included in report. 
+            </doc>
+        </parameter>
+
+        <parameter name="voom" type="boolean" default="false">
+            <doc>
+				If true, cluster heatmap based on voom (edgeR) transformed data is included in report. 
+            </doc>
+        </parameter>
+
+    </parameters>
+</component>

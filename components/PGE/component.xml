@@ -49,7 +49,7 @@
             </doc>
         </parameter>
 
-        <parameter name="docker" type="string">
+        <parameter name="docker" type="string" default="">
             <doc>
 				If set, component will be executed within this docker image. 
             </doc>

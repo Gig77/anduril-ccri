@@ -33,6 +33,12 @@
 
     <parameters>
 
+        <parameter name="name" type="string">
+            <doc>
+				Sample name.
+            </doc>
+        </parameter>
+
         <parameter name="docker" type="string">
             <doc>
             	If set, component will be executing within this docker image.

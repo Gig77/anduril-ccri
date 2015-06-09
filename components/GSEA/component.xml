@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>GSEA</name>
+    <version>1.0</version>
+    <doc>Gene set enrichment analysis (GSEA) from the Broad Institute</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Expression</category>
+
+    <launcher type="bash">
+        <argument name="file" value="gsea.sh"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="rnk" type="CSV">
+            <doc>Ranked gene list as produced by DEG2Rnk.</doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+		<output name="enrichedUp" type="CSV">
+			<doc>Gene sets enriched for up-regulated genes.</doc>
+		</output>
+
+		<output name="enrichedDown" type="CSV">
+			<doc>Gene sets enriched for down-regulated genes.</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="label" type="string">
+            <doc>
+				Name of analyzed gene list. Must be valid file name. (required).
+            </doc>
+        </parameter>
+
+    </parameters>
+    
+</component>

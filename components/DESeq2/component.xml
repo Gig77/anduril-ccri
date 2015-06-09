@@ -44,6 +44,12 @@
 				Name of case group.
             </doc>
         </parameter>
+        
+        <parameter name="additionalGroups" type="string">
+            <doc>
+				Comma-separated list of additional sample groups to model.
+            </doc>
+        </parameter>
 
         <parameter name="label" type="string" default="">
             <doc>
@@ -53,4 +59,5 @@
 
     </parameters>
 </component>
+
 

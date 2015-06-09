@@ -4,13 +4,19 @@
 source "$ANDURIL_HOME/bash/functions.sh"
 export_command
 
+DOCKER=$( getparameter docker )
+NAME=$( getparameter name )
+
+if [ -n "$DOCKER" ]; then
+    DOCKER="docker run -u anduril --volumes-from anduril-master $DOCKER"
+fi
+
 set -ex
 
-#cut -f 2 ${input__index_bamFiles} | tail -n +2 > /root/bamlist.txt
-
-geneBody_coverage.py \
+$DOCKER geneBody_coverage.py \
 	-i ${input_bam} \
-	-r /root/BED/Human_Homo_sapiens/hg19.HouseKeepingGenes.nochr.bed \
+	-r /home/anduril/BED/Human_Homo_sapiens/hg19.HouseKeepingGenes.nochr.bed \
 	-o $(dirname ${output_coverage})/output
-	
-mv $(dirname ${output_coverage})/output.geneBodyCoverage.txt ${output_coverage} 
+
+cat $(dirname ${output_coverage})/output.geneBodyCoverage.txt | perl -ne "if (!/Percentile/) { s/^\S+/$NAME/ }; print \$_" > ${output_coverage}	
+rm $(dirname ${output_coverage})/output.geneBodyCoverage.txt
