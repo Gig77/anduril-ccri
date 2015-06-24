@@ -47,6 +47,12 @@
             </doc>
         </parameter>
 
+        <parameter name="groupOrder" type="string" default="">
+            <doc>
+				Comma separated list of sample group names as they should appear in box plots.
+            </doc>
+        </parameter>
+
         <parameter name="nRow" type="int" default="4">
             <doc>
 				Number of rows.

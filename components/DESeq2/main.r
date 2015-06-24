@@ -3,7 +3,7 @@ library(componentSkeleton)
 execute <- function(cf) {
 
   # debug
-  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/deseq_DSvsMature/_command")
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/deseq_DSvsNonDS/_command")
   #stop("HERE!")
   
   instance.name <- get.metadata(cf, 'instanceName')	
@@ -34,7 +34,7 @@ execute <- function(cf) {
 	sampleTable <- sampleTable[!is.na(condition),]
 
 	print(sprintf("Conditions in model: %s", paste(levels(sampleTable$condition), collapse=",")))
-  print(sprintf("Contrasts: %s,%s", nameCase, nameControl))
+  	print(sprintf("Contrasts: %s,%s", nameCase, nameControl))
   
 	library(DESeq2)
 	ddsHTSeq  <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = "/", design = ~ condition)

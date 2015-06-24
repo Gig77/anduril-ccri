@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>GSEAHeatmap</name>
+    <version>1.0</version>
+    <doc>Heatmap summarizing GSEA results across multiple pairwise comparisons.</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Enrichment</category>
+
+    <launcher type="R">
+        <argument name="file" value="gseaHeatmap.r"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="enrichedUp" type="TextFile" array="true">
+            <doc>Array of CSV files containing pair-wise enrichment results for up-regulated genes.</doc>
+        </input>
+
+        <input name="enrichedDown" type="TextFile" array="true">
+            <doc>Array of CSV files containing pair-wise enrichment results for down-regulated genes.</doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+		<output name="document" type="Latex">
+			<doc>Latex document containing heatmap.</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="caption" type="string" default = "Cluster heatmap of enriched genesets.">
+            <doc>
+				Figure caption of heatmap.
+            </doc>
+        </parameter>
+
+        <parameter name="sectionTitle" type="string" default="">
+            <doc>
+				Section title.
+            </doc>
+        </parameter>
+
+        <parameter name="sectionType" type="string" default="subsection">
+            <doc>
+				Section type.
+            </doc>
+        </parameter>
+
+        <parameter name="regexGeneSetNames" type="string" default="">
+            <doc>
+				Regular expression matching gene set names to be included in heatmap.
+            </doc>
+        </parameter>
+
+        <parameter name="regexGeneSetNamesExclude" type="string" default="">
+            <doc>
+				Regular expression matching gene set names to be excluded from heatmap.
+            </doc>
+        </parameter>
+
+        <parameter name="regexCategoryNames" type="string" default="">
+            <doc>
+				Regular expression matching gene set categories to be included in heatmap.
+            </doc>
+        </parameter>
+
+        <parameter name="regexCategoryNamesExclude" type="string" default="">
+            <doc>
+				Regular expression matching gene set categories to be excluded from heatmap.
+            </doc>
+        </parameter>
+
+        <parameter name="sigCutoff" type="float" default="0.05">
+            <doc>
+				FDR cut-off for a gene set to be considered as statistically significantly enriched. These gene sets will be marked with an asterisk in the heatmap. If parameter 
+				'RFilterExpr' is not set, only gene sets are included that reach this level of statistical significance in at least one of the comparisons.
+            </doc>
+        </parameter>
+
+        <parameter name="hsigCutoff" type="float" default="0.01">
+            <doc>
+				FDR cut-off for a gene set to be considered as highly statistically significantly enriched. These gene sets will be marked with a double-asterisk in the heatmap.
+            </doc>
+        </parameter>
+
+        <parameter name="RFilterExpr" type="string" default="">
+            <doc>
+				Evaluated R expression to decide which gene sets to include in heatmap. Example: "FDR.q.val.iAMPvsNoniAMP &lt; 0.001"
+            </doc>
+        </parameter>
+
+        <parameter name="NESCutoff" type="float" default="0">
+            <doc>
+				Minimum normalized enrichment score (NES) for a gene set to be included. If set to zero (default), no NES filtering is performed.
+            </doc>
+        </parameter>
+
+        <parameter name="cexCol" type="float" default="0.9">
+            <doc>
+				Size factor for column labels.
+            </doc>
+        </parameter>
+
+        <parameter name="cexRow" type="float" default="0.7">
+            <doc>
+				Size factor for row labels.
+            </doc>
+        </parameter>
+
+        <parameter name="title" type="string" default="GSEA Heatmap">
+            <doc>
+				Figure title.
+            </doc>
+        </parameter>
+
+        <parameter name="pdfWidth" type="float" default="10">
+            <doc>
+				Width of PDF in inch.
+            </doc>
+        </parameter>
+
+        <parameter name="pdfHeight" type="float" default="15">
+            <doc>
+				Height of PDF in inch.
+            </doc>
+        </parameter>
+
+        <parameter name="figureHeight" type="float" default="24">
+            <doc>
+				Height of Latex figure in cm.
+            </doc>
+        </parameter>
+        
+    </parameters>
+</component>
+
+

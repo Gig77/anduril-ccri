@@ -17,6 +17,10 @@
             <doc>Ranked gene list as produced by DEG2Rnk.</doc>
         </input>
 
+        <input name="categories" type="CSV" optional="true">
+            <doc>Mapping of gene set names to category names (optional). If provided, enriched output gene sets will be annotated with category names in a separate column.</doc>
+        </input>
+
     </inputs>
 
     <outputs>
@@ -33,9 +37,21 @@
 
     <parameters>
 
+        <parameter name="gmt" type="string">
+            <doc>
+				Comma-separated list of GMT files used for GSEA (required).
+            </doc>
+        </parameter>
+
         <parameter name="label" type="string">
             <doc>
 				Name of analyzed gene list. Must be valid file name. (required).
+            </doc>
+        </parameter>
+
+        <parameter name="options" type="string" default="-nperm 100 -set_max 500 -set_min 10">
+            <doc>
+				Other options passed on to GSEA. (optional).
             </doc>
         </parameter>
 

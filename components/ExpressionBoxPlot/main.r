@@ -51,6 +51,11 @@ execute <- function(cf) {
 	  genes <- genes[match(geneIds$Ensembl, genes$Ensembl),] # original order was destroyed by merge, so let's restore it first
 	}                        	
 	gexpr$HGNC <- factor(as.character(gexpr$HGNC), levels=genes$HGNC)
+
+	groupOrder <- get.parameter(cf, 'groupOrder', 'string')
+	if (groupOrder != "") {
+		gexpr$group <- factor(as.character(gexpr$group), levels=unlist(strsplit(groupOrder, ',')))
+	}
 	
 	# prepare document
 	tex <- character(0)

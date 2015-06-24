@@ -13,6 +13,7 @@ fi
 
 set -ex
 
+cd $(dirname ${output_coverage})
 $DOCKER geneBody_coverage.py \
 	-i ${input_bam} \
 	-r /home/anduril/BED/Human_Homo_sapiens/hg19.HouseKeepingGenes.nochr.bed \
