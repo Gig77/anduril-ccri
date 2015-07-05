@@ -71,6 +71,24 @@
             </doc>
         </parameter>
 
+        <parameter name="labelOutliers" type="boolean" default="false">
+            <doc>
+				If true, outlier expression values (i.e. values outside whiskers) are overplotted with sample names. See also parameter 'cexSampleLabel'.
+            </doc>
+        </parameter>
+
+        <parameter name="cexDot" type="float" default="0.2">
+            <doc>
+				Relative expansion factor for dot size.
+            </doc>
+        </parameter>
+
+        <parameter name="cexSampleLabel" type="float" default="0.5">
+            <doc>
+				Relative expansion factor for sample labels when labeling outliers. Parameter 'labelOutliers' must be true for this parameter to have an effect.
+            </doc>
+        </parameter>
+
         <parameter name="width" type="float" default="7">
             <doc>
 				Width of figure in inch.

@@ -4,7 +4,7 @@ execute <- function(cf) {
 
   # debug
   #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/GSEAHeatmap/case1/component/_command")
-  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/gseaHeatmapMSigDBOther/_command")
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/gseaReportMSigDB-heatmapPositional/_command")
 
   instance.name <- get.metadata(cf, 'instanceName')	
 	
@@ -36,17 +36,17 @@ execute <- function(cf) {
 	stopifnot(nrow(enrichedDown) > 0)
 	
 	# read and merge gene sets
-	merged <- read.delim(enrichedUp[1,"File"], colClasses = c("character", "character", "character", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
+	merged <- read.delim(enrichedUp[1,"File"], colClasses = c("character", "character", "character", "NULL", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
 	names(merged)[5:ncol(merged)] <- paste0(names(merged)[5:ncol(merged)], ".", enrichedUp[1,"Key"], ".up")
 	if (nrow(enrichedUp) > 1) {
 	  for (i in 2:nrow(enrichedUp)) {
-	    d <- read.delim(enrichedUp[i,"File"], colClasses = c("character", "character", "character", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
+	    d <- read.delim(enrichedUp[i,"File"], colClasses = c("character", "character", "character", "NULL", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
 	    names(d)[5:ncol(d)] <- paste0(names(d)[5:ncol(d)], ".", enrichedUp[i,"Key"], ".up")
 	    merged <- merge(merged, d, by=1:4, all=T)
 	  }
 	}
 	for (i in 1:nrow(enrichedDown)) {
-	  d <- read.delim(enrichedDown[i,"File"], colClasses = c("character", "character", "character", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
+	  d <- read.delim(enrichedDown[i,"File"], colClasses = c("character", "character", "character", "NULL", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
 	  names(d)[5:ncol(d)] <- paste0(names(d)[5:ncol(d)], ".", enrichedDown[i,"Key"], ".down")
 	  merged <- merge(merged, d, by=1:4, all=T)
 	}

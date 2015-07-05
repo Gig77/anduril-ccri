@@ -5,13 +5,13 @@ option_list <- list(
   make_option("--phenotype", type="character", help="either 'up' or 'down'"),
   make_option("--gene-set-dir", type="character", help="Directory containing individual gene set reports prodcued by GSEA."),
   make_option("--num-genes", type="integer", help="Number of genes in input .rnk file used for GEA analysis"),
-  make_option("--categories", type="character", help="CSV file with category names for gene sets."),
+  make_option("--annotations", type="character", help="CSV file with category names for gene sets."),
   make_option("--output-file", type="character", help="Name of output file.")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
 # debug
-# opt <- data.frame('gsea-result-file' = "/mnt/projects/iamp/results/anduril/execute/GSEA/case1/component/enrichedUp.csv", 'phenotype' = "up", 'gene-set-dir' = "/mnt/projects/iamp/results/anduril/execute/GSEA/case1/component/gsea_output", 'num-genes' = 87, 'categories' = '/mnt/projects/iamp/results/geneset_category.tsv', stringsAsFactors=F, check.names=F)   
+# opt <- data.frame('gsea-result-file' = "/mnt/projects/iamp/results/anduril/execute/GSEA/case1/component/enrichedUp.csv", 'phenotype' = "up", 'gene-set-dir' = "/mnt/projects/iamp/results/anduril/execute/GSEA/case1/component/gsea_output", 'num-genes' = 87, 'annotations' = '/mnt/projects/iamp/results/geneset_category.tsv', stringsAsFactors=F, check.names=F)   
 
 stopifnot(opt$phenotype == 'up' || opt$phenotype == 'down')
 
@@ -23,10 +23,16 @@ out <- gsea.result[,!names(gsea.result) %in% c("")] # drop extra empty column
 out$CORE_GENES <- NA
 
 # read gene set to category assignments (if provided)
-if (!is.null(opt$categories) && !is.na(opt$categories) && nchar(opt$categories) > 0) {
-  categories <- read.delim(opt$categories, stringsAsFactors = FALSE)
-  names(categories)[2] <- "CATEGORY"
-  out <- merge(out, categories, by.x="NAME", by.y="geneset", all.x=T)
+if (!is.null(opt$annotations) && !is.na(opt$annotations) && nchar(opt$annotations) > 0) {
+  annotations <- read.delim(opt$annotations, stringsAsFactors = FALSE)
+  names(annotations)[2] <- "CATEGORY"
+  names(annotations)[3] <- "DESCRIPTION"
+  names(annotations)[4] <- "LINKOUT"
+  out <- merge(out, annotations, by.x="NAME", by.y="geneset", all.x=T)
+} else {
+	out$CATEGORY <- NA
+	out$DESCRIPTION <- NA
+	out$LINKOUT <- NA
 }
 
 
@@ -46,9 +52,9 @@ for (i in 1:nrow(gsea.result)) {
   gs.genes <- gs.genes[gs.genes$CORE.ENRICHMENT == "Yes",]
   
   if (opt$phenotype == 'up') {
-    gs.genes$rank <- gs.genes$RANK.IN.GENE.LIST
+    gs.genes$rank <- gs.genes$RANK.IN.GENE.LIST + 1
   } else {
-    gs.genes$rank <- opt$'num-genes' - gs.genes$RANK.IN.GENE.LIST + 1
+    gs.genes$rank <- opt$'num-genes' - gs.genes$RANK.IN.GENE.LIST
   }
   gs.genes <- gs.genes[order(gs.genes$rank),]
   gs.genes$CORE_GENES <- paste0(gs.genes$PROBE, "(", gs.genes$rank, ")")
@@ -65,8 +71,7 @@ if (skipped > 0) print(paste("WARNING: Skipped", skipped, "gene sets because out
 out <- out[order(abs(out$NES), decreasing = TRUE),]
 
 # write output
-names(out)[2] <- "DESCRIPTION"
-write.table(out[,c("NAME", "DESCRIPTION", "CATEGORY", "SIZE", "ES", "NES", "NOM p-val", "FDR q-val", "FWER p-val", "RANK AT MAX", "LEADING EDGE", "CORE_GENES")], opt$'output-file', quote=FALSE, sep="\t",  na="", row.names=FALSE, col.names=TRUE)
+write.table(out[,c("NAME", "DESCRIPTION", "CATEGORY", "LINKOUT", "SIZE", "ES", "NES", "NOM p-val", "FDR q-val", "FWER p-val", "RANK AT MAX", "LEADING EDGE", "CORE_GENES")], opt$'output-file', quote=TRUE, sep="\t",  na="", row.names=FALSE, col.names=TRUE)
 
 # ---
 # experimental: determine overlaps of core genes between gene sets to reduce redundancy in output

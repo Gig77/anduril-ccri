@@ -3,7 +3,7 @@ library(componentSkeleton)
 execute <- function(cf) {
 
 	# debug
-	#rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/degBoxplotUp_ERvsPreB-geneBoxplot/_command")
+	#rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/ExpressionBoxPlot/case1/component/_command")
 
 	instance.name <- get.metadata(cf, 'instanceName')
 	
@@ -83,6 +83,9 @@ execute <- function(cf) {
 
 	width <- get.parameter(cf, 'width', 'float')
 	height <- get.parameter(cf, 'height', 'float')
+	label.outliers <- get.parameter(cf, 'labelOutliers', 'boolean')
+	cex.dot <- get.parameter(cf, 'cexDot', 'float')
+	cex.sample.label <- get.parameter(cf, 'cexSampleLabel', 'float')
 	
 	rowheight <- height/nRow
 	
@@ -102,10 +105,17 @@ execute <- function(cf) {
 	               ylab="DESeq2 normalized expression",
 	               scales=list(x=list(rot=90)),
 	               par.settings = list(box.umbrella=list(col="black"), box.rectangle = list(col="black")), 
-	               panel=function(x,y,...){
+	               panel=function(x,y,...,subscripts){
 	                 panel.grid()
-	                 panel.bwplot(x,y,pch="|",do.out=FALSE, ...)
-	                 panel.stripplot(x,y,jitter.data=TRUE,factor=0.8,pch=19,cex=0.2,...)
+	                 bw <- panel.bwplot(x,y,pch="|",do.out=FALSE, ...)
+	                 panel.stripplot(x,y,jitter.data=TRUE,factor=0.8,pch=19,cex=cex.dot, ...)
+	                 if (label.outliers) {
+	                   whisker.up <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[5]})
+	                   whisker.dn <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[1]})
+	                   lab <- as.character(gexpr.thispage$sample[subscripts])
+	                   lab[y <= whisker.up[x] & y >= whisker.dn[x]] <- ""
+	                   panel.text(x, y, labels=lab, cex=cex.sample.label)
+	                 }
 	               }))
 	  dev.off()
 	  

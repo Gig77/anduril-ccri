@@ -21,7 +21,7 @@ TMPDIR=$(mktemp -d)
 RNKFILE=$TMPDIR/$LABEL.rnk
 cp ${input_rnk} $RNKFILE
 
-cd $TMPDIR && java -cp /data_synology/software/gsea-2.0.13/gsea2-2.0.13.jar -Xmx3048m xtools.gsea.GseaPreranked \
+cd $TMPDIR && java -cp /data_synology/software/gsea-2.0.13/gsea2-2.0.13.jar -Xmx5g xtools.gsea.GseaPreranked \
 		-rpt_label $LABEL \
 		-rnk $RNKFILE \
 		-gmx $GMT \
@@ -49,7 +49,7 @@ Rscript ${metadata_componentPath}/annotate-genesets.r \
 	--phenotype up \
 	--gene-set-dir $(dirname ${output_enrichedUp})/gsea_output \
 	--num-genes $(cat ${input_rnk} | wc -l) \
-	--categories "${input_categories}" \
+	--annotations "${input_annotations}" \
 	--output-file ${output_enrichedUp}
 rm ${output_enrichedUp}.part
 
@@ -58,7 +58,7 @@ Rscript ${metadata_componentPath}/annotate-genesets.r \
 	--phenotype down \
 	--gene-set-dir $(dirname ${output_enrichedUp})/gsea_output \
 	--num-genes $(cat ${input_rnk} | wc -l) \
-	--categories "${input_categories}" \
+	--annotations "${input_annotations}" \
 	--output-file ${output_enrichedDown}
 rm ${output_enrichedDown}.part
 

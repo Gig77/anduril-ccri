@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>GSEAOverlap</name>
+    <version>1.0</version>
+    <doc>Overlap analysis of enriched gene sets based on shared core enrichment genes.</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Enrichment</category>
+
+    <launcher type="R">
+        <argument name="file" value="gseaOverlap.r"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="enrichedGeneSets" type="TextFile" array="true">
+            <doc>Array of CSV files with enriched gene sets as produced by component GSEA.</doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+		<output name="document" type="Latex">
+			<doc>Latex report</doc>
+		</output>
+
+		<output name="overlaps" type="CSV">
+			<doc>Overlapping gene set pairs together with shared core enrichment genes.</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="caption" type="string" default = "Hierarchical clustering of enriched gene sets.">
+            <doc>
+				Figure caption of dendrogram.
+            </doc>
+        </parameter>
+
+        <parameter name="sectionTitle" type="string" default="">
+            <doc>
+				Section title.
+            </doc>
+        </parameter>
+
+        <parameter name="sectionType" type="string" default="subsection">
+            <doc>
+				Section type.
+            </doc>
+        </parameter>
+
+        <parameter name="regexGeneSetNames" type="string" default="">
+            <doc>
+				Regular expression matching gene set names to be included in analysis.
+            </doc>
+        </parameter>
+
+        <parameter name="regexGeneSetNamesExclude" type="string" default="">
+            <doc>
+				Regular expression matching gene set names to be excluded from analysis.
+            </doc>
+        </parameter>
+
+        <parameter name="regexCategoryNames" type="string" default="">
+            <doc>
+				Regular expression matching gene set categories to be included in analysis.
+            </doc>
+        </parameter>
+
+        <parameter name="regexCategoryNamesExclude" type="string" default="">
+            <doc>
+				Regular expression matching gene set categories to be excluded from analysis.
+            </doc>
+        </parameter>
+
+        <parameter name="similarityCutoffTree" type="float" default="0">
+            <doc>
+				Minimum Jaccard index for dendrogram output. Gene sets with no single overlapping gene set above this cut-off are removed from the tree. Default is to include all gene sets (= no similarity filtering).
+            </doc>
+        </parameter>
+
+        <parameter name="similarityCutoffTable" type="float" default="0.3">
+            <doc>
+				Minimum Jaccard index for table output. If two overlapping gene sets are below this cut-off, the pair is removed.
+            </doc>
+        </parameter>
+
+        <parameter name="sigCutoff" type="float" default="0.05">
+            <doc>
+				FDR cut-off for a gene set to be included in analysis.
+            </doc>
+        </parameter>
+
+        <parameter name="hsigCutoff" type="float" default="0.01">
+            <doc>
+				FDR cut-off for a gene set to be highlighted in dendrogram.
+            </doc>
+        </parameter>
+
+        <parameter name="cexLabel" type="float" default="1">
+            <doc>
+				Size factor for dendrogram labels.
+            </doc>
+        </parameter>
+
+    </parameters>
+</component>
+
+

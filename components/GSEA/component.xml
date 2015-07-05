@@ -17,8 +17,12 @@
             <doc>Ranked gene list as produced by DEG2Rnk.</doc>
         </input>
 
-        <input name="categories" type="CSV" optional="true">
-            <doc>Mapping of gene set names to category names (optional). If provided, enriched output gene sets will be annotated with category names in a separate column.</doc>
+        <input name="annotations" type="CSV" optional="true">
+            <doc>
+            	CSV file with gene set annotations (optional). Enriched output gene sets will be annotated with category names and gene set descriptions as provided in this file. 
+                The first column is the gene set name (must be identical to the one provided in the gmt file below), the second the gene set category, the third the gene set description, 
+                and the fourth one is the link ID that can later be concatenated to a valid URL referring to the source Web page of the gene set.
+            </doc>
         </input>
 
     </inputs>

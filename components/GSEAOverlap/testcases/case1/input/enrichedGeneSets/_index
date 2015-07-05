@@ -1,0 +1,4 @@
+"Key"	"File"
+"MSigDBUp"	"/mnt/projects/iamp/results/anduril/execute/gseaMSigDB_iAMPvsNoniAMP/enrichedUp.csv"
+"GeneSigDBUp"	"/mnt/projects/iamp/results/anduril/execute/gseaGeneSigDB_iAMPvsNoniAMP/enrichedUp.csv"
+"DSigDBUp"	"/mnt/projects/iamp/results/anduril/execute/gseaDSigDB_iAMPvsNoniAMP/enrichedUp.csv"
