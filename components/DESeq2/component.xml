@@ -57,6 +57,13 @@
             </doc>
         </parameter>
 
+        <parameter name="minReplicatesForReplace" type="int" default="7">
+            <doc>
+            	The minimum number of replicates required in order to replace outliers in a sample. If there are samples with so many replicates, 
+            	the model will be refit after replacing these outliers, flagged by Cook’s distance. Set to 0 in order to never replace outliers.
+            </doc>
+        </parameter>
+
     </parameters>
 </component>
 

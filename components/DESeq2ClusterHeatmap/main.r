@@ -81,13 +81,13 @@ execute <- function(cf) {
 	}
 	
 	if (do.rlog) {
-		tex <- c(tex, latex.figure(plot.file.rld, caption=paste0(caption, " Before clustering, read counts were transformed using the regularized log (rlog) transformation of DESeq2 and sample distances computed with the Spearman correlation coefficient.")))		    			    
+		tex <- c(tex, latex.figure(plot.file.rld, caption=paste0(caption, " Before clustering, read counts were transformed by DESeq2 regularized log (rlog) transformation and sample distances were computed using the Spearman correlation coefficient.")))		    			    
 	}
 	if (do.vst) {	
-		tex <- c(tex, latex.figure(plot.file.vst, caption=paste0(caption, " Before clustering, read counts were transformed using the variance stabilizing transformation (VST) of DESeq2 and sample distances computed with the Spearman correlation coefficient.")))		    			    
+		tex <- c(tex, latex.figure(plot.file.vst, caption=paste0(caption, " Before clustering, read counts were transformed by DESeq2 variance stabilizing transformation (VST) and sample distances were computed using the Spearman correlation coefficient.")))		    			    
 	}
 	if (do.voom) {
-		tex <- c(tex, latex.figure(plot.file.voom, caption=paste0(caption, " Before clustering, read counts were transformed using Voom from edgeR and sample distances computed with the Spearman correlation coefficient.")))		    			    
+		tex <- c(tex, latex.figure(plot.file.voom, caption=paste0(caption, " Before clustering, read counts were transformed by edgeR Voom and sample distances were computed using the Spearman correlation coefficient.")))		    			    
 	}
 	latex.write.main(cf, 'report', tex)
 	

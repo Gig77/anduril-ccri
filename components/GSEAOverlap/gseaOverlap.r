@@ -4,7 +4,8 @@ execute <- function(cf) {
 
   # debug
   #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/GSEAOverlap/case1/component/_command")
-
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/gseaReportOverlap-dendrogramERvsNonERUp/_command")
+  
   instance.name <- get.metadata(cf, 'instanceName')	
 	
   # Params
@@ -62,34 +63,6 @@ execute <- function(cf) {
     sets <- sets[!grepl(regexGeneSetNamesExclude, sets$NAME, perl=T),]
   }
 
-  # set up distance matrix based on Jaccard indices
-	dist <- matrix(0, nrow=nrow(sets), ncol=nrow(sets), dimnames=list(sets$NAME, sets$NAME))
-	overlaps <- data.frame(set1=character(0), set2=character(0), desc1=character(0), desc2=character(0), size1=integer(0), size2=integer(0), shared=integer(0), jacc=numeric(0), NES1=numeric(0), NES2=numeric(0), FDR1=numeric(0), FDR2=numeric(0), shared_core_genes=character(0), stringsAsFactors = F)
-	
-	for (i in c(1:nrow(sets))) {
-		g1 <- unlist(strsplit(sets$CORE_GENES[i], ", "))
-		for (j in c(1:nrow(sets))) {
-			g2 <- unlist(strsplit(sets$CORE_GENES[j], ", "))
-			shared <- intersect(g1, g2)
-			jacc = length(shared) / length(union(g1, g2))
-			dist[sets$NAME[i], sets$NAME[j]] <- 1-jacc
-			if (i < j && jacc >= similarityCutoffTable) {
-				overlaps <- rbind(overlaps, data.frame(set1=sets$NAME[i], set2=sets$NAME[j], desc1=sets$DESCRIPTION[i], desc2=sets$DESCRIPTION[j], size1=length(g1), size2=length(g2), shared=length(shared), jacc=jacc, NES1=sets$NES[i], NES2=sets$NES[j], FDR1=sets$FDR.q.val[i], FDR2=sets$FDR.q.val[j], shared_core_genes=paste(intersect(g1, g2), collapse=", "), stringsAsFactors = F))
-			}
-		}
-	}
-	overlaps <- overlaps[order(overlaps$jacc, decreasing=T),]
-	CSV.write(get.output(cf, 'overlaps'), overlaps)
-	
-  # prune tree: exclude gene sets with insufficient overlap
-  diag(dist) <- 1
-  include <- apply(dist, 1, min) <= 1-similarityCutoffTree
-  dist.pruned <- dist[include, include]
-
-  # prepare output directory
-  report.dir <- get.output(cf, 'document')
-  dir.create(report.dir, recursive=TRUE)
-
   # prepare Latex document
   tex <- character()
   tex <- c(tex, '\\clearpage')
@@ -99,25 +72,80 @@ execute <- function(cf) {
   if (nchar(section.title) > 0) {
     tex <- c(tex, sprintf('%s{%s}\\label{%s}', section.type, section.title,	instance.name))
   }
-  
-	if (nrow(dist.pruned) < 2) {
-	  print("WARNING: Not enough (<2) overlapping gene sets to produce dendrogram. Skipped.")
-	  tex <- c(tex, "Not enough overlapping gene sets. No dendrogram produced.")
-	} else {
-	  # plot dendrogram
-	  plot.file <- sprintf('%s-tree.pdf', instance.name)
-	  pdf(file.path(report.dir, plot.file))
-	  rd <- as.dendrogram(hclust(as.dist(dist.pruned)), hang=0.02)
-	  par(cex=cexLabel, mar=c(4,1,1,10)) 
-	  plot(rd, horiz=T, axes = F, xlab="Shared core enrichment genes (Jaccard index)")
-	  #plot(hclust(as.dist(dist)))
-	  axis(1, at=seq(0,1,0.1), labels=1-seq(0,1,0.1))
-	  dev.off()
 
-	  tex <- c(tex, latex.figure(plot.file, caption=caption))  
-	}
-	
-	latex.write.main(cf, 'document', tex)
+  overlaps <- data.frame(set1=character(0), set2=character(0), desc1=character(0), desc2=character(0), linkout1=character(0), linkout2=character(0), size1=integer(0), size2=integer(0), shared=integer(0), jacc=numeric(0), NES1=numeric(0), NES2=numeric(0), FDR1=numeric(0), FDR2=numeric(0), shared_core_genes=character(0), stringsAsFactors = F)
+  
+  if (nrow(sets) < 2) {
+    print("WARNING: Not enough (<2) overlapping gene sets to produce dendrogram. Skipped.")
+    tex <- c(tex, "No overlapping gene sets found.")
+  } else {
+    # set up distance matrix based on Jaccard indices
+  	dist <- matrix(0, nrow=nrow(sets), ncol=nrow(sets), dimnames=list(sets$NAME, sets$NAME))
+  	
+  	for (i in c(1:nrow(sets))) {
+  		g1 <- unlist(strsplit(sets$CORE_GENES[i], ", "))
+  		for (j in c(1:nrow(sets))) {
+  			g2 <- unlist(strsplit(sets$CORE_GENES[j], ", "))
+  			shared <- intersect(g1, g2)
+  			jacc = length(shared) / length(union(g1, g2))
+  			dist[sets$NAME[i], sets$NAME[j]] <- 1-jacc
+  			if (i < j && jacc >= similarityCutoffTable) {
+  				overlaps <- rbind(overlaps, data.frame(set1=sets$NAME[i], set2=sets$NAME[j], desc1=sets$DESCRIPTION[i], desc2=sets$DESCRIPTION[j], linkout1=sets$LINKOUT[i], linkout2=sets$LINKOUT[j], size1=length(g1), size2=length(g2), shared=length(shared), jacc=jacc, NES1=sets$NES[i], NES2=sets$NES[j], FDR1=sets$FDR.q.val[i], FDR2=sets$FDR.q.val[j], shared_core_genes=paste(intersect(g1, g2), collapse=", "), stringsAsFactors = F))
+  			}
+  		}
+  	}
+  	overlaps <- overlaps[order(overlaps$jacc, decreasing=T),]
+  	
+    # prune tree: exclude gene sets with insufficient overlap
+    diag(dist) <- 1
+    include <- apply(dist, 1, min) <= 1-similarityCutoffTree
+    dist.pruned <- dist[include, include]
+  
+    # prepare output directory
+    report.dir <- get.output(cf, 'dendrogram')
+    dir.create(report.dir, recursive=TRUE)
+    
+  	if (nrow(dist.pruned) < 2) {
+  	  print("WARNING: Not enough (<2) overlapping gene sets to produce dendrogram. Skipped.")
+  	  tex <- c(tex, "Not enough overlapping gene sets. No dendrogram produced.")
+  	} else {
+  	  
+  	  # set label expansion factor
+  	  if (cexLabel==0) {
+  	    cexLabel = 1 - nrow(dist.pruned) / 130;
+  	    if (cexLabel < 0.2) {
+  	      cexLabel = 0.2
+  	    }
+  	  }
+  	  
+  	  # plot dendrogram
+  	  plot.file <- sprintf('%s-tree.pdf', instance.name)
+  	  pdf(file.path(report.dir, plot.file))
+  	  rd <- as.dendrogram(hclust(as.dist(dist.pruned)), hang=0.02)
+
+  	  # color dendrogram leaves if FDR <= hsigCutoff
+  	  if (hsigCutoff >= 0) {
+  	    labelCol <- function(x) {
+  	      if (is.leaf(x) && sets$FDR.q.val[sets$NAME==attr(x, "label")] <= hsigCutoff) {
+  	        attr(x, "nodePar") <- list(lab.col="red")
+  	      }
+  	      return(x)
+  	    }
+  	    rd <- dendrapply(rd, labelCol)
+  	  }
+  	  
+  	  par(cex=cexLabel, mar=c(4,1,1,10)) 
+  	  plot(rd, horiz=T, axes = F, xlab="Shared core enrichment genes (Jaccard index)", xlim=c(1,0), cex.lab=2.5-1.5*cexLabel)
+  	  #plot(hclust(as.dist(dist)))
+  	  axis(1, at=seq(0,1,0.1), labels=1-seq(0,1,0.1))
+  	  dev.off()
+  
+  	  tex <- c(tex, latex.figure(plot.file, caption=caption))  
+  	}
+  }
+  
+	latex.write.main(cf, 'dendrogram', tex)
+	CSV.write(get.output(cf, 'overlaps'), overlaps)
 	
 	return(0)
 }

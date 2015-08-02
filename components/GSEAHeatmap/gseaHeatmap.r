@@ -36,19 +36,19 @@ execute <- function(cf) {
 	stopifnot(nrow(enrichedDown) > 0)
 	
 	# read and merge gene sets
-	merged <- read.delim(enrichedUp[1,"File"], colClasses = c("character", "character", "character", "NULL", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
-	names(merged)[5:ncol(merged)] <- paste0(names(merged)[5:ncol(merged)], ".", enrichedUp[1,"Key"], ".up")
+	merged <- read.delim(enrichedUp[1,"File"], colClasses = c("character", "character", "character", "NULL", "NULL", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
+	names(merged)[4:ncol(merged)] <- paste0(names(merged)[4:ncol(merged)], ".", enrichedUp[1,"Key"], ".up")
 	if (nrow(enrichedUp) > 1) {
 	  for (i in 2:nrow(enrichedUp)) {
-	    d <- read.delim(enrichedUp[i,"File"], colClasses = c("character", "character", "character", "NULL", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
-	    names(d)[5:ncol(d)] <- paste0(names(d)[5:ncol(d)], ".", enrichedUp[i,"Key"], ".up")
-	    merged <- merge(merged, d, by=1:4, all=T)
+	    d <- read.delim(enrichedUp[i,"File"], colClasses = c("character", "character", "character", "NULL", "NULL", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
+	    names(d)[4:ncol(d)] <- paste0(names(d)[4:ncol(d)], ".", enrichedUp[i,"Key"], ".up")
+	    merged <- merge(merged, d, by=1:3, all=T)
 	  }
 	}
 	for (i in 1:nrow(enrichedDown)) {
-	  d <- read.delim(enrichedDown[i,"File"], colClasses = c("character", "character", "character", "NULL", "integer", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
-	  names(d)[5:ncol(d)] <- paste0(names(d)[5:ncol(d)], ".", enrichedDown[i,"Key"], ".down")
-	  merged <- merge(merged, d, by=1:4, all=T)
+	  d <- read.delim(enrichedDown[i,"File"], colClasses = c("character", "character", "character", "NULL", "NULL", "NULL", "numeric", "NULL", "numeric", "NULL", "NULL", "NULL", "NULL"))
+	  names(d)[4:ncol(d)] <- paste0(names(d)[4:ncol(d)], ".", enrichedDown[i,"Key"], ".down")
+	  merged <- merge(merged, d, by=1:3, all=T)
 	}
 	rownames(merged) <- merged$NAME
 	
@@ -58,7 +58,7 @@ execute <- function(cf) {
 	  merged[,cmp][is.na(merged[,cmp])] <- 0
 	  merged[,cmp] <- ifelse(merged[,cmp] > 0, merged[,cmp]*merged[,cmp], -merged[,cmp]*merged[,cmp]) # square NES to increase color contrast
 	  merged[,paste0("FDR.q.val.", cmp)] <- pmin(merged[,paste0("FDR.q.val.", cmp, ".up")], merged[,paste0("FDR.q.val.", cmp, ".down")], na.rm=T)
-	  merged[,is.na(paste0("FDR.q.val.", cmp))] <- 1
+	  merged[,paste0("FDR.q.val.", cmp)][is.na(merged[,paste0("FDR.q.val.", cmp)])] <- 1
 	}
 
 	# determine best FDR and NES across all comparisons

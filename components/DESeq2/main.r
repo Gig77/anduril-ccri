@@ -13,6 +13,7 @@ execute <- function(cf) {
 	nameCase    <- get.parameter(cf, 'nameCase',       type = 'string')
 	label       <- get.parameter(cf, 'label',          type = 'string')
 	additionalGroups <- get.parameter(cf, "additionalGroups", type = 'string')
+	minReplicatesForReplace <- get.parameter(cf, "minReplicatesForReplace", type = 'int')
 	
 	# Inputs
 	countFiles  <- Array.read(cf,"countFiles")
@@ -38,7 +39,7 @@ execute <- function(cf) {
   
 	library(DESeq2)
 	ddsHTSeq  <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = "/", design = ~ condition)
-	ddsHTSeq  <- DESeq(ddsHTSeq)
+	ddsHTSeq  <- DESeq(ddsHTSeq, minReplicatesForReplace=ifelse(minReplicatesForReplace > 0, minReplicatesForReplace, Inf))
 	res       <- results(ddsHTSeq, contrast=c("condition", nameCase, nameControl), cooksCutoff=FALSE)
 	results.out <- data.frame(ids=rownames(res), as.data.frame(res))
 	

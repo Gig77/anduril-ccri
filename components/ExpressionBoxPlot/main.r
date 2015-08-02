@@ -113,7 +113,7 @@ execute <- function(cf) {
 	                   whisker.up <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[5]})
 	                   whisker.dn <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[1]})
 	                   lab <- as.character(gexpr.thispage$sample[subscripts])
-	                   lab[y <= whisker.up[x] & y >= whisker.dn[x]] <- ""
+	                   lab[y < whisker.up[x] & y > whisker.dn[x]] <- ""
 	                   panel.text(x, y, labels=lab, cex=cex.sample.label)
 	                 }
 	               }))

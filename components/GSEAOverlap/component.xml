@@ -21,7 +21,7 @@
 
     <outputs>
 
-		<output name="document" type="Latex">
+		<output name="dendrogram" type="Latex">
 			<doc>Latex report</doc>
 		</output>
 
@@ -95,13 +95,13 @@
 
         <parameter name="hsigCutoff" type="float" default="0.01">
             <doc>
-				FDR cut-off for a gene set to be highlighted in dendrogram.
+				Gene set names with an FDR equal or below this cut-off will be colored red. Set to -1 to disable.
             </doc>
         </parameter>
 
-        <parameter name="cexLabel" type="float" default="1">
+        <parameter name="cexLabel" type="float" default="0">
             <doc>
-				Size factor for dendrogram labels.
+				Size factor for dendrogram labels. If set to 0 (default), expansion factor is determined automatically based on the number of leaves in the tree.
             </doc>
         </parameter>
 
