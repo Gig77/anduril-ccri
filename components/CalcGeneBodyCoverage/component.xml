@@ -18,6 +18,13 @@
 				Aligned, sorted, and indexed BAM file.
             </doc>
         </input>
+        
+        <input name="bed" type="CSV" array="false" optional="true">
+            <doc>
+            	BED file containing gene and exon coordinates to be used for calculating 5'-3' coverage. If not supplied, defaults depending on the specified genome will be used (see parameter "genome").
+            	The first line is supposed to be the header line and will be skipped.
+			</doc>
+        </input>
 
     </inputs>
 
@@ -36,6 +43,12 @@
         <parameter name="name" type="string">
             <doc>
 				Sample name.
+            </doc>
+        </parameter>
+
+        <parameter name="genome" type="string" default="human/hg19">
+            <doc>
+				Currently supported is "human/hg19" (default) or "mouse/mm10". 
             </doc>
         </parameter>
 

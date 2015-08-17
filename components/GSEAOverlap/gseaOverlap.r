@@ -4,7 +4,7 @@ execute <- function(cf) {
 
   # debug
   #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/GSEAOverlap/case1/component/_command")
-  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/gseaReportOverlap-dendrogramERvsNonERUp/_command")
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/helena_veronika/results/anduril/execute/gseaReportOverlap-dendrogramoeERvsEmptyDn/_command")
   
   instance.name <- get.metadata(cf, 'instanceName')	
 	
@@ -82,8 +82,12 @@ execute <- function(cf) {
     # set up distance matrix based on Jaccard indices
   	dist <- matrix(0, nrow=nrow(sets), ncol=nrow(sets), dimnames=list(sets$NAME, sets$NAME))
   	
+  	# remember which genes were found in which gene sets (and its enrichment)
+  	coreGenes <- data.frame(gene=character(), set=character(), fdr=numeric(), stringsAsFactors = 0)
+  	
   	for (i in c(1:nrow(sets))) {
   		g1 <- unlist(strsplit(sets$CORE_GENES[i], ", "))
+  		
   		for (j in c(1:nrow(sets))) {
   			g2 <- unlist(strsplit(sets$CORE_GENES[j], ", "))
   			shared <- intersect(g1, g2)
@@ -92,6 +96,10 @@ execute <- function(cf) {
   			if (i < j && jacc >= similarityCutoffTable) {
   				overlaps <- rbind(overlaps, data.frame(set1=sets$NAME[i], set2=sets$NAME[j], desc1=sets$DESCRIPTION[i], desc2=sets$DESCRIPTION[j], linkout1=sets$LINKOUT[i], linkout2=sets$LINKOUT[j], size1=length(g1), size2=length(g2), shared=length(shared), jacc=jacc, NES1=sets$NES[i], NES2=sets$NES[j], FDR1=sets$FDR.q.val[i], FDR2=sets$FDR.q.val[j], shared_core_genes=paste(intersect(g1, g2), collapse=", "), stringsAsFactors = F))
   			}
+  		}
+  		
+  		for (g in g1) {
+  		  coreGenes[nrow(coreGenes)+1,"gene"] <- g ; coreGenes[nrow(coreGenes),"set"] <- sets$NAME[i] ; coreGenes[nrow(coreGenes),"fdr"] <- sets$FDR.q.val[i]
   		}
   	}
   	overlaps <- overlaps[order(overlaps$jacc, decreasing=T),]
@@ -146,6 +154,21 @@ execute <- function(cf) {
   
 	latex.write.main(cf, 'dendrogram', tex)
 	CSV.write(get.output(cf, 'overlaps'), overlaps)
+	
+	# write enriched core genes with their gene sets
+	if (nrow(sets) < 2) {
+	  coreGenes.agg <- data.frame(gene=NA, rank=NA, freq=NA, 'gene_sets(FDR)'=NA, check.names=F)
+	} else {
+	  library(plyr)
+    coreGenes$set_fdr <- paste0(coreGenes$set, "(", sprintf("%.1g", coreGenes$fdr), ")")
+    coreGenes.agg <- ddply(coreGenes[order(coreGenes$gene, coreGenes$fdr, coreGenes$set),], ~gene, summarise, freq = length(gene), 'gene_sets(FDR)' = paste(set_fdr, collapse = ", "))
+    coreGenes.agg <- coreGenes.agg[order(coreGenes.agg$freq, decreasing=T),]
+    names(coreGenes.agg)[names(coreGenes.agg) == "gene"] <- "gene_rank"
+    coreGenes.agg$gene <- sapply(strsplit(coreGenes.agg$gene_rank, "\\(|\\)"), "[[", 1)
+    coreGenes.agg$rank <- sapply(strsplit(coreGenes.agg$gene_rank, "\\(|\\)"), "[[", 2)
+	}
+
+	CSV.write(get.output(cf, 'coreGeneFrequency'), coreGenes.agg[,c("gene", "rank", "freq", "gene_sets(FDR)")])	
 	
 	return(0)
 }

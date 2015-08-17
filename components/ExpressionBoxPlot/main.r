@@ -3,7 +3,7 @@ library(componentSkeleton)
 execute <- function(cf) {
 
 	# debug
-	#rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/ExpressionBoxPlot/case1/component/_command")
+	#rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/sarah/results/anduril/execute/boxplotTcellSubtype/_command")
 
 	instance.name <- get.metadata(cf, 'instanceName')
 	
@@ -17,7 +17,7 @@ execute <- function(cf) {
 	sample2group <- data.frame(sample=character(0), group=character(0))
 	for(g in groups$ID) {
 	  members <- unlist(strsplit(groups[groups[,'ID']==g,'Members'],','))
-	  sample2group <- rbind(sample2group, data.frame(sample=members, group=g))
+	  sample2group <- rbind(sample2group, data.frame(sample=members, group=g, stringsAsFactors = F))
 	}
 	
 	# translate ensembl gene ids to HGNC symbols
@@ -32,34 +32,16 @@ execute <- function(cf) {
 	  genes <- merge(genes, annotation[,c("Ensembl", "HGNC")], all.x=T)
 	} else {  # no: use genes (ensembl ids) provided via table input port
 	  geneIds <- CSV.read(get.input(cf, "geneIds"))
-	  genes <- merge(geneIds, annotation[,c("Ensembl", "HGNC")], all.x=T)
-	  genes$HGNC[is.na(genes$HGNC) | genes$HGNC==""] <- genes$Ensembl
+	  names(geneIds)[1] <- "Ensembl"
+	  genes <- merge(subset(geneIds, select="Ensembl"), annotation[,c("Ensembl", "HGNC")], all.x=T)
+	  name.missing <- is.na(genes$HGNC) | genes$HGNC == ""
+	  genes$HGNC[name.missing] <- genes$Ensembl[name.missing]
 	}
 	genes <- merge(genes, expr, by.x="Ensembl", by.y="row.names")
-	
-	# melt dataframe into shape suitable for plotting and add sample groups
-	library(reshape)
-	gexpr <- melt(genes, id.vars=c("Ensembl", "HGNC"))
-	names(gexpr)[names(gexpr)=="variable"] <- "sample"
-	gexpr <- merge(gexpr, sample2group, all.X=T)
-	
-	# before plotting, preserve input gene order in lattice output (note: factor levels determines panel order)
-	# original order might have been destroyed by merge
-	if (genesViaParameter) {
-	  genes <- genes[match(unlist(strsplit(hgncs, ',')), genes$HGNC),] 
-	} else {
-	  genes <- genes[match(geneIds$Ensembl, genes$Ensembl),] # original order was destroyed by merge, so let's restore it first
-	}                        	
-	gexpr$HGNC <- factor(as.character(gexpr$HGNC), levels=genes$HGNC)
 
-	groupOrder <- get.parameter(cf, 'groupOrder', 'string')
-	if (groupOrder != "") {
-		gexpr$group <- factor(as.character(gexpr$group), levels=unlist(strsplit(groupOrder, ',')))
-	}
-	
 	# prepare document
 	tex <- character(0)
-	tex <- c(tex, '\\clearpage')
+	if (nrow(genes) > 0) tex <- c(tex, '\\clearpage')
 	
 	out.dir <- get.output(cf, 'document')
 	dir.create(out.dir, recursive=TRUE)
@@ -73,62 +55,92 @@ execute <- function(cf) {
 	  tex <- c(tex, sprintf('%s{%s}\\label{%s}', section.type, section.title,	instance.name))
 	}
 	
-	# plot page by page
-	library(lattice)
+	if (nrow(genes) == 0) {
+	  tex <- c(tex, "No significant DEGs found.")
+	} else {
+	  
+  	# melt dataframe into shape suitable for plotting and add sample groups
+  	library(reshape)
+  	gexpr <- melt(genes, id.vars=c("Ensembl", "HGNC"))
+  	names(gexpr)[names(gexpr)=="variable"] <- "sample"
+  	gexpr$sample <- as.character(gexpr$samp)
+  	gexpr <- merge(gexpr, sample2group, all.X=T)
+  	
+  	# before plotting, preserve input gene order in lattice output (note: factor levels determines panel order)
+  	# original order might have been destroyed by merge
+  	if (genesViaParameter) {
+  	  genes <- genes[match(unlist(strsplit(hgncs, ',')), genes$HGNC),] 
+  	} else {
+  	  matches <- match(geneIds$Ensembl, genes$Ensembl)
+  	  matches <- matches[!is.na(matches)]
+  	  genes <- genes[matches,] # original order was destroyed by merge, so let's restore it first
+  	}                        	
+  	gexpr$HGNC <- factor(as.character(gexpr$HGNC), levels=genes$HGNC)
+  
+  	groupOrder <- get.parameter(cf, 'groupOrder', 'string')
+  	if (groupOrder != "") {
+  		gexpr$group <- factor(as.character(gexpr$group), levels=unlist(strsplit(groupOrder, ',')))
+  		if(sum(is.na(gexpr$group)) > 0) stop(sprintf("Invalid or missing sample group(s) in parameter 'groupOrder': %s", groupOrder))
+  	}
+  	
+  	# plot page by page
+  	library(lattice)
+  	
+  	nRow <- get.parameter(cf, 'nRow', 'int')
+  	nCol <- get.parameter(cf, 'nCol', 'int')
+  		
+  	splits <- split(levels(gexpr$HGNC), (0:(length(levels(gexpr$HGNC))-1)) %/% (nRow*nCol) + 1)
+  
+  	width <- get.parameter(cf, 'width', 'float')
+  	height <- get.parameter(cf, 'height', 'float')
+  	label.outliers <- get.parameter(cf, 'labelOutliers', 'boolean')
+  	cex.dot <- get.parameter(cf, 'cexDot', 'float')
+  	cex.sample.label <- get.parameter(cf, 'cexSampleLabel', 'float')
+	cex.group.label <- get.parameter(cf, 'cexGroupLabel', 'float')
 	
-	nRow <- get.parameter(cf, 'nRow', 'int')
-	nCol <- get.parameter(cf, 'nCol', 'int')
-		
-	splits <- split(levels(gexpr$HGNC), (0:(length(levels(gexpr$HGNC))-1)) %/% (nRow*nCol) + 1)
+  	rowheight <- (height-2)/nRow
+  	
+  	for(pageno in 1:length(splits)) {
+  	  gexpr.thispage <- gexpr[gexpr$HGNC %in% splits[[pageno]],]
+  	  nRow.thispage <- min(nRow, ((length(unique(gexpr.thispage$HGNC))-1) %/% nCol) + 1)
+  	  
+  	  # get output file name
+  	  plot.file <- sprintf('geneboxplot-%s-figure%d.pdf', instance.name, pageno)
+  	  
+  	  pdf(file.path(out.dir, plot.file), height=rowheight*nRow.thispage+2, width=width)
+  	  print(bwplot(value~group | HGNC, data=gexpr.thispage, 
+  	               layout=c(nCol,nRow.thispage),
+  	               par.strip.text=list(cex=0.5),
+  	               notch=FALSE,
+  	               as.table=TRUE,
+  	               ylab="DESeq2 normalized expression",
+  	               scales=list(x=list(rot=90,cex=cex.group.label)),
+  	               par.settings = list(box.umbrella=list(col="black"), box.rectangle = list(col="black")), 
+  	               panel=function(x,y,...,subscripts){
+  	                 panel.grid()
+  	                 bw <- panel.bwplot(x,y,pch="|",do.out=FALSE, ...)
+  	                 panel.stripplot(x,y,jitter.data=TRUE,factor=0.8,pch=19,cex=cex.dot, ...)
+  	                 if (label.outliers) {
+  	                   whisker.up <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[5]})
+  	                   whisker.dn <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[1]})
+  	                   lab <- as.character(gexpr.thispage$sample[subscripts])
+  	                   lab[y < whisker.up[x] & y > whisker.dn[x]] <- ""
+  	                   panel.text(x, y, labels=lab, cex=cex.sample.label)
+  	                 }
+  	               }))
+  	  dev.off()
+  	  
+  	  # generate latex string
+  	  caption <- get.parameter(cf, 'caption', 'string')
+  	  if (length(splits) > 1) {
+  	    caption <- paste0(caption, " Part ", pageno, " of ", length(splits), ".")
+  	  }
+  	  tex <- c(tex, latex.figure(plot.file, caption=caption))
+  	}
+  }
 
-	width <- get.parameter(cf, 'width', 'float')
-	height <- get.parameter(cf, 'height', 'float')
-	label.outliers <- get.parameter(cf, 'labelOutliers', 'boolean')
-	cex.dot <- get.parameter(cf, 'cexDot', 'float')
-	cex.sample.label <- get.parameter(cf, 'cexSampleLabel', 'float')
-	
-	rowheight <- height/nRow
-	
-	for(pageno in 1:length(splits)) {
-	  gexpr.thispage <- gexpr[gexpr$HGNC %in% splits[[pageno]],]
-	  nRow.thispage <- min(nRow, ((length(unique(gexpr.thispage$HGNC))-1) %/% nCol) + 1)
-	  
-	  # get output file name
-	  plot.file <- sprintf('geneboxplot-%s-figure%d.pdf', instance.name, pageno)
-	  
-	  pdf(file.path(out.dir, plot.file), height=rowheight*nRow.thispage, width=width)
-	  print(bwplot(value~group | HGNC, data=gexpr.thispage, 
-	               layout=c(nCol,nRow.thispage),
-	               par.strip.text=list(cex=0.5),
-	               notch=FALSE,
-	               as.table=TRUE,
-	               ylab="DESeq2 normalized expression",
-	               scales=list(x=list(rot=90)),
-	               par.settings = list(box.umbrella=list(col="black"), box.rectangle = list(col="black")), 
-	               panel=function(x,y,...,subscripts){
-	                 panel.grid()
-	                 bw <- panel.bwplot(x,y,pch="|",do.out=FALSE, ...)
-	                 panel.stripplot(x,y,jitter.data=TRUE,factor=0.8,pch=19,cex=cex.dot, ...)
-	                 if (label.outliers) {
-	                   whisker.up <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[5]})
-	                   whisker.dn <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[1]})
-	                   lab <- as.character(gexpr.thispage$sample[subscripts])
-	                   lab[y < whisker.up[x] & y > whisker.dn[x]] <- ""
-	                   panel.text(x, y, labels=lab, cex=cex.sample.label)
-	                 }
-	               }))
-	  dev.off()
-	  
-	  # generate latex string
-	  caption <- get.parameter(cf, 'caption', 'string')
-	  if (length(splits) > 1) {
-	    caption <- paste0(caption, " Part ", pageno, " of ", length(splits), ".")
-	  }
-	  tex <- c(tex, latex.figure(plot.file, caption=caption))
-	}
-	
 	latex.write.main(cf, 'document', tex)
-
+	
 	return(0)
 }
 

@@ -13,12 +13,16 @@
 
     <inputs>
 
-        <input name="countFiles" type="TextFile" array="true">
-            <doc>Array of names of read count files</doc>
+        <input name="counts" type="TextFile" array="true">
+            <doc>Array containing names of read count files.</doc>
         </input>
 
         <input name="samples" type="CSV" array="false">
-            <doc>Sample names with group assignment.</doc>
+            <doc>Samples.</doc>
+        </input>
+
+        <input name="sampleGroups" type="CSV" array="false">
+            <doc>Sample groups.</doc>
         </input>
 
     </inputs>
@@ -33,21 +37,28 @@
 
     <parameters>
 
-        <parameter name="nameControl" type="string">
+        <parameter name="controlGroup" type="string">
             <doc>
-				Name of control group.
+				Name of control group. Group must be defined in 'sampleGroups' input file.
             </doc>
         </parameter>
 
-        <parameter name="nameCase" type="string">
+        <parameter name="caseGroup" type="string">
             <doc>
-				Name of case group.
+				Name of case group. Group must be defined in 'sampleGroups' input file.
             </doc>
         </parameter>
         
-        <parameter name="additionalGroups" type="string">
+        <parameter name="otherGroups" type="string">
             <doc>
-				Comma-separated list of additional sample groups to model.
+				Comma-separated list of additional sample groups to model. All groups must be defined in 'sampleGroups' input file.
+            </doc>
+        </parameter>
+
+        <parameter name="design" type="string" default = "~ group">
+            <doc>
+				Design formula used in DESeqDataSetFromHTSeqCount command. All variables except 'group' need to be present as data columns in the 'samples' input table.
+				'group' is a special factor variable automatically provided by the component that contains group assignments according to the 'sampleGroups' input data. 
             </doc>
         </parameter>
 

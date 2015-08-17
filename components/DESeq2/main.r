@@ -3,57 +3,81 @@ library(componentSkeleton)
 execute <- function(cf) {
 
   # debug
-  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/deseq_DSvsNonDS/_command")
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/sarah/results/anduril/execute/deseq_CTLA4IgVsCtrlD3/_command")
   #stop("HERE!")
   
   instance.name <- get.metadata(cf, 'instanceName')	
-	
-	# Params
-	nameControl <- get.parameter(cf, 'nameControl',    type = 'string')
-	nameCase    <- get.parameter(cf, 'nameCase',       type = 'string')
-	label       <- get.parameter(cf, 'label',          type = 'string')
-	additionalGroups <- get.parameter(cf, "additionalGroups", type = 'string')
-	minReplicatesForReplace <- get.parameter(cf, "minReplicatesForReplace", type = 'int')
-	
-	# Inputs
-	countFiles  <- Array.read(cf,"countFiles")
-	samples     <- CSV.read(get.input(cf, 'samples'))
-	
-	sNames      <- countFiles$Key
-	g1N         <- unlist(strsplit(samples[samples[,'ID']==nameControl,'Members'],','))
-	g2N         <- unlist(strsplit(samples[samples[,'ID']==nameCase,'Members'],','))
-	condition   <- rep(NA, length(sNames))
-	condition[match(g1N,sNames)] <- nameControl
-	condition[match(g2N,sNames)] <- nameCase
-	
-	for (ag in unlist(strsplit(additionalGroups, ','))) {
-	  members <- unlist(strsplit(samples[samples[,'ID']==ag,'Members'],','))
-	  condition[match(members,sNames)] <- ag
-	}
-	
-	sampleTable <- data.frame(sampleName = sNames, fileName = countFiles$File, condition  = condition)
-	sampleTable <- sampleTable[!is.na(condition),]
 
-	print(sprintf("Conditions in model: %s", paste(levels(sampleTable$condition), collapse=",")))
-  	print(sprintf("Contrasts: %s,%s", nameCase, nameControl))
+  # inputs
+  
+  countFiles   <- Array.read(cf,"counts")
+  samples      <- CSV.read(get.input(cf, 'samples'))
+  sampleGroups <- CSV.read(get.input(cf, 'sampleGroups'))
+  
+	# params
+  
+	controlGroup <- get.parameter(cf, 'controlGroup',    type = 'string')
+	caseGroup    <- get.parameter(cf, 'caseGroup',       type = 'string')
+	otherGroups  <- get.parameter(cf, "otherGroups", type = 'string')
+	label        <- get.parameter(cf, 'label',          type = 'string')
+	minReplicatesForReplace <- get.parameter(cf, "minReplicatesForReplace", type = 'int')
+	design       <- get.parameter(cf, 'design',          type = 'string')
+	
+	stopifnot(controlGroup %in% sampleGroups$ID)
+	stopifnot(caseGroup %in% sampleGroups$ID)
+
+	# prepare sample table for DESeq
+
+	sampleTable <- merge(samples, countFiles, by.x="Alias", by.y="Key", all.x = T)
+	names(sampleTable)[ncol(sampleTable)] <- "fileName"
+	sampleTable$group <- NA
+  
+	controlSamples <- unlist(strsplit(sampleGroups[sampleGroups[,'ID']==controlGroup,'Members'],','))
+	stopifnot(length(controlSamples) > 0)
+	sampleTable$group[sampleTable$Alias %in% controlSamples] <- controlGroup
+
+  caseSamples <- unlist(strsplit(sampleGroups[sampleGroups[,'ID']==caseGroup,'Members'],','))
+  stopifnot(length(caseSamples) > 0)
+  sampleTable$group[sampleTable$Alias %in% caseSamples] <- caseGroup
+
+  if (otherGroups != "") {
+    otherGroupsSplit <- unlist(strsplit(otherGroups, ','))
+    for (otherGroup in otherGroupsSplit) {
+      otherGroupMembers <- unlist(strsplit(sampleGroups[sampleGroups[,'ID']==otherGroup,'Members'],','))
+      stopifnot(length(otherGroupMembers) > 0)
+      sampleTable$group[sampleTable$Alias %in% otherGroupMembers] <- otherGroup
+    }
+  }  
+  
+  sampleTable <- sampleTable[!is.na(sampleTable$group),]
+  sampleTable$group <- factor(sampleTable$group, levels=c(controlGroup, caseGroup, otherGroupsSplit))
+  sampleTable <- sampleTable[,c(c("Alias", "fileName", "group"), names(sampleTable)[!names(sampleTable) %in% c("Alias", "fileName", "group")])]
+
+
+	print(sprintf("Groups in model: %s", paste(levels(sampleTable$group), collapse=",")))
+  print(sprintf("Contrasts: %s,%s", caseGroup, controlGroup))
+  
+  # DESeq2
   
 	library(DESeq2)
-	ddsHTSeq  <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = "/", design = ~ condition)
+	ddsHTSeq  <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = "/", design = as.formula(design))
 	ddsHTSeq  <- DESeq(ddsHTSeq, minReplicatesForReplace=ifelse(minReplicatesForReplace > 0, minReplicatesForReplace, Inf))
-	res       <- results(ddsHTSeq, contrast=c("condition", nameCase, nameControl), cooksCutoff=FALSE)
+	res       <- results(ddsHTSeq, contrast=c("group", caseGroup, controlGroup), cooksCutoff=FALSE)
 	results.out <- data.frame(ids=rownames(res), as.data.frame(res))
 	
 	# add normalized sample counts to output and compute separate means for experiment and control group	
 	counts.norm <- as.data.frame(counts(ddsHTSeq, normalized=T))
-	results.out <- merge(results.out, subset(counts.norm, select=c(g2N, g1N)), by.x="ids", by.y="row.names", all.x=T)
-	if (length(g2N) > 1) { results.out$baseMeanE <- rowMeans(results.out[,g2N], na.rm=T) } else { results.out$baseMeanE <-results.out[,g2N] }
-	if (length(g1N) > 1) { results.out$baseMeanC <- rowMeans(results.out[,g1N], na.rm=T) } else { results.out$baseMeanC <-results.out[,g1N] }
+	results.out <- merge(results.out, subset(counts.norm, select=c(caseSamples, controlSamples)), by.x="ids", by.y="row.names", all.x=T)
+	results.out$baseMean <- rowMeans(results.out[,c(caseSamples, controlSamples)], na.rm=T)
+	if (length(caseSamples) > 1) { results.out$baseMeanE <- rowMeans(results.out[,caseSamples], na.rm=T) } else { results.out$baseMeanE <-results.out[,caseSamples] }
+	if (length(controlSamples) > 1) { results.out$baseMeanC <- rowMeans(results.out[,controlSamples], na.rm=T) } else { results.out$baseMeanC <-results.out[,controlSamples] }
 	
 	coln1 <- c('log2FoldChange', 'pvalue', 'padj', 'baseMean', 'baseMeanE', 'baseMeanC', 'lfcSE', 'stat')
 	coln2 <- c('fc',             'p',      'q',    'meanExpr', 'meanExprE', 'meanExprC', 'fcSE',  'stat')
 	coln2 <- paste(coln2, label, sep='')
 	colnames(results.out)[match(coln1,colnames(results.out))] <- coln2
-	results.out <- results.out[,c("ids", coln2, g2N, g1N)]
+	results.out <- results.out[,c("ids", coln2, caseSamples, controlSamples)]
+	results.out <- results.out[order(results.out[,paste0("q", label)]),]
 
 	CSV.write(get.output(cf, 'results'), results.out)
 	

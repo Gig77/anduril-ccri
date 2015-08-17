@@ -31,6 +31,11 @@
 				Options passed on to GSNAP command line. Overrides all other ways of specifying parameters. 
             </doc>
         </parameter>
+        <parameter name="executable" type="string" default="gsnap">
+            <doc>
+				Executable to run. 'gsnap' (default) or 'gsnapl' for long genomes (> 4 GB). 
+            </doc>
+        </parameter>
         <parameter name="docker" type="string">
             <doc>
             	If set, component will be executing within this docker image.

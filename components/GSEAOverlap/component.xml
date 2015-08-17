@@ -29,6 +29,13 @@
 			<doc>Overlapping gene set pairs together with shared core enrichment genes.</doc>
 		</output>
 
+		<output name="coreGeneFrequency" type="CSV">
+			<doc>List of core enrichment genes with the number of times a gene is found in the enriched input gene sets. 
+			     The list is sorted by frequency, such that genes found in more input gene sets are shown at the top.
+			     Genes found in many enriched gene sets contribute much to the overall enrichment result and are thus presumably more interesting.
+			     The last column lists all enriched gene sets an input gene is part of, with the FDR enrichment value for each gene set shown in parentheses.</doc>
+		</output>
+
     </outputs>
 
     <parameters>

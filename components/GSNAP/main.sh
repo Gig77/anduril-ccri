@@ -7,6 +7,7 @@ export_command
 READS=$( getinput reads )
 echo "Reads are ${READS}"
 
+EXECUTABLE=$( getparameter executable )
 OPTIONS=$( getparameter options )
 TMP=$(tempfile)
 
@@ -20,13 +21,11 @@ set -ex
 cd $( dirname ${output_alignment} )
 
 # align
-$DOCKER gsnap \
+$DOCKER $EXECUTABLE \
 	--format=sam \
 	--quality-protocol=sanger \
 	--print-snps \
 	--input-buffer-size=5000 \
-	--use-splicing=g1k_v37.splicesites \
-	--use-snps=g1k_v37.snp138 \
 	${OPTIONS} \
 	\<\(java -jar /home/anduril/picard-tools-1.130/picard.jar SamToFastq VALIDATION_STRINGENCY=SILENT INPUT=${READS} FASTQ=/dev/stdout\) \
 		\| /home/anduril/samtools-1.2/samtools view -Shb - \
