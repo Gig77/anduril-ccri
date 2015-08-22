@@ -4,7 +4,7 @@ execute <- function(cf) {
 
   # debug
   #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/iamp/results/anduril/execute/GSEAOverlap/case1/component/_command")
-  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/helena_veronika/results/anduril/execute/gseaReportOverlap-dendrogramoeERvsEmptyDn/_command")
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/helena_veronika/results/anduril/execute/gseaReportOverlap-dendrogramoeRHDvsEmptyDn/_command")
   
   instance.name <- get.metadata(cf, 'instanceName')	
 	
@@ -20,6 +20,8 @@ execute <- function(cf) {
   similarityCutoffTable <- get.parameter(cf, 'similarityCutoffTable',    type = 'float')
   sigCutoff <- get.parameter(cf, 'sigCutoff',    type = 'float')
   hsigCutoff <- get.parameter(cf, 'hsigCutoff',    type = 'float')
+  nesCutoff <- get.parameter(cf, 'nesCutoff',    type = 'float')
+  topN <- get.parameter(cf, 'topN',    type = 'int')
   cexLabel <- get.parameter(cf, 'cexLabel', type = 'float')
   
   # Inputs
@@ -49,7 +51,10 @@ execute <- function(cf) {
   }
 
 	# filter gene sets
-  sets <- sets[sets$FDR.q.val <= sigCutoff,]	
+  sets <- sets[sets$FDR.q.val <= sigCutoff,]
+  if (nesCutoff > 0) {
+	  sets <- sets[sets$NES >= nesCutoff,]
+  }
   if (!is.na(regexCategoryNames) && !is.null(regexCategoryNames) && nchar(regexCategoryNames) > 0) {
     sets <- sets[grepl(regexCategoryNames, sets$CATEGORY, perl=T),]
   }
@@ -108,7 +113,18 @@ execute <- function(cf) {
     diag(dist) <- 1
     include <- apply(dist, 1, min) <= 1-similarityCutoffTree
     dist.pruned <- dist[include, include]
-  
+	
+	# prunte to top N sets if requested
+  caption.suffix = ""
+	if (topN > 0 & nrow(dist.pruned) > topN) {
+	  caption.suffix = paste(" Of ", nrow(dist.pruned), " overlapping gene sets meeting the filtering criteria, only the ", topN, " most enriched gene sets are shown.")
+	  sets.pruned <- sets[sets$NAME %in% colnames(dist.pruned),]
+		sets.pruned <- sets.pruned[order(abs(sets.pruned$NES), decreasing=T),]
+		include <- sets.pruned$NAME[1:topN]
+		dist.pruned <- dist.pruned[include, include]
+		overlaps <- overlaps[overlaps$set1 %in% include & overlaps$set2 %in% include,]
+	}
+	
     # prepare output directory
     report.dir <- get.output(cf, 'dendrogram')
     dir.create(report.dir, recursive=TRUE)
@@ -148,7 +164,7 @@ execute <- function(cf) {
   	  axis(1, at=seq(0,1,0.1), labels=1-seq(0,1,0.1))
   	  dev.off()
   
-  	  tex <- c(tex, latex.figure(plot.file, caption=caption))  
+  	  tex <- c(tex, latex.figure(plot.file, caption=paste0(caption, caption.suffix)))  
   	}
   }
   

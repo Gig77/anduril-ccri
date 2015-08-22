@@ -17,8 +17,8 @@
             <doc>DESeq2 expression matrix</doc>
         </input>
 
-        <input name="groups" type="CSV">
-            <doc>Sample groups</doc>
+        <input name="sampleGroups" type="SampleGroupTable">
+            <doc>Assignment of samples to sample groups. Use 'includeGroups' to make sure that every sample is assigned to only one group.</doc>
         </input>
 
         <input name="annotation" type="CSV">
@@ -47,9 +47,10 @@
             </doc>
         </parameter>
 
-        <parameter name="groupOrder" type="string" default="">
+        <parameter name="includeGroups" type="string" default="">
             <doc>
-				Comma separated list of sample group names as they should appear in box plots.
+				Comma-separated list of sample group names as they should appear in the box plots (in that order). If not specified, 
+				all groups specified in 'groups' are plotted in alphabetical order.
             </doc>
         </parameter>
 

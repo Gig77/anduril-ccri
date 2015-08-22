@@ -3,21 +3,27 @@ library(componentSkeleton)
 execute <- function(cf) {
 
 	# debug
-	#rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/sarah/results/anduril/execute/boxplotTcellSubtype/_command")
+	#rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/fikret/results/anduril/execute/degBoxplotUp_DTCvsMNC-geneBoxplot/_command")
 
 	instance.name <- get.metadata(cf, 'instanceName')
 	
 	# ----
 	
 	expr <- Matrix.read(get.input(cf, 'expr'))
-	groups <- CSV.read(get.input(cf, "groups"))
+	sampleGroups <- CSV.read(get.input(cf, "sampleGroups"))
 	annotation <- CSV.read(get.input(cf, "annotation"))
 	
 	# read sample groups
 	sample2group <- data.frame(sample=character(0), group=character(0))
-	for(g in groups$ID) {
-	  members <- unlist(strsplit(groups[groups[,'ID']==g,'Members'],','))
+	for(g in sampleGroups$ID) {
+	  members <- unlist(strsplit(sampleGroups[sampleGroups[,'ID']==g,'Members'],','))
 	  sample2group <- rbind(sample2group, data.frame(sample=members, group=g, stringsAsFactors = F))
+	}
+	
+	# only included groups
+	includeGroups <- get.parameter(cf, 'includeGroups', 'string')
+	if (includeGroups != "") {
+	  sample2group <- sample2group[sample2group$group %in% unlist(strsplit(includeGroups, ',')),]
 	}
 	
 	# translate ensembl gene ids to HGNC symbols
@@ -28,8 +34,9 @@ execute <- function(cf) {
 	
 	genesViaParameter <- !is.null(hgncs) && !is.na(hgncs) && hgncs != ""
 	if (genesViaParameter) {  # gene list (HGNC symbols) provided via parameter?
-	  genes <- data.frame(HGNC=unlist(strsplit(hgncs, ',')))
+	  genes <- data.frame(HGNC=unlist(strsplit(hgncs, ',')), stringsAsFactors = F)
 	  genes <- merge(genes, annotation[,c("Ensembl", "HGNC")], all.x=T)
+	  genes$Ensembl[is.na(genes$Ensembl)] <- genes$HGNC[is.na(genes$Ensembl)]
 	} else {  # no: use genes (ensembl ids) provided via table input port
 	  geneIds <- CSV.read(get.input(cf, "geneIds"))
 	  names(geneIds)[1] <- "Ensembl"
@@ -77,10 +84,9 @@ execute <- function(cf) {
   	}                        	
   	gexpr$HGNC <- factor(as.character(gexpr$HGNC), levels=genes$HGNC)
   
-  	groupOrder <- get.parameter(cf, 'groupOrder', 'string')
-  	if (groupOrder != "") {
-  		gexpr$group <- factor(as.character(gexpr$group), levels=unlist(strsplit(groupOrder, ',')))
-  		if(sum(is.na(gexpr$group)) > 0) stop(sprintf("Invalid or missing sample group(s) in parameter 'groupOrder': %s", groupOrder))
+  	if (includeGroups != "") {
+  		gexpr$group <- factor(as.character(gexpr$group), levels=unlist(strsplit(includeGroups, ',')))
+  		if(sum(is.na(gexpr$group)) > 0) stop(sprintf("Incomplete assignment of samples to groups due to invalid or missing sample group(s) in parameter 'includeGroups': %s", includeGroups))
   	}
   	
   	# plot page by page
@@ -96,7 +102,7 @@ execute <- function(cf) {
   	label.outliers <- get.parameter(cf, 'labelOutliers', 'boolean')
   	cex.dot <- get.parameter(cf, 'cexDot', 'float')
   	cex.sample.label <- get.parameter(cf, 'cexSampleLabel', 'float')
-	cex.group.label <- get.parameter(cf, 'cexGroupLabel', 'float')
+	  cex.group.label <- get.parameter(cf, 'cexGroupLabel', 'float')
 	
   	rowheight <- (height-2)/nRow
   	

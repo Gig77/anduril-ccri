@@ -47,11 +47,15 @@
 
     <parameters>
 
-        <parameter name="caption" type="string" default="Sample clustering based on gene-indpendent metrics derived from global read count statistics, including the fraction of exonic reads among all mapped reads, the fraction of rRNA reads among all exonic reads, the fraction of duplicated reads among all uniquely mapped protein-coding reads, and 5' to 3' gene body coverage bias. Ideally, groups of interest (e.g. treatment vs. control or biological subtypes) mix and do not cluster. Significant clustering is indicative of major batch effects. In this case, cross-check the clustering observed here with the clustering observed from normalized gene expresion values.">
+        <parameter name="caption" type="string" default="Sample clustering based on gene-indpendent metrics derived from global read count statistics, including the fraction of exonic reads among all mapped reads, the fraction of rRNA reads among all exonic reads, the fraction of duplicated reads among all uniquely mapped protein-coding reads, and 5' to 3' gene body coverage bias. Ideally, groups of interest (e.g. treatment vs. control or biological subtypes) mix and do not cluster. Significant clustering is indicative of possible batch effects. In this case, cross-check the clustering observed here with the clustering observed from normalized gene expresion values.">
             <doc>
 				Figure caption.
             </doc>
         </parameter>
+
+		<parameter name="cexLabel" type="float" default="0.8">
+			<doc>Expansion factor of sample samples.</doc>
+		</parameter>
 
 		<parameter name="sectionTitle" type="string" default="">
 			<doc>Title of the LaTeX section or an empty string to omit the section</doc>

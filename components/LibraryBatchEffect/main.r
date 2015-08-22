@@ -7,6 +7,7 @@ execute <- function(cf) {
   #stop("HERE!")
   
   instance.name <- get.metadata(cf, 'instanceName')
+  cexLabel <- get.parameter(cf, 'cexLabel', 'float')
   
 	# read count metrics
   readStats <- CSV.read(get.input(cf, "readStats"))
@@ -83,7 +84,7 @@ execute <- function(cf) {
 	par(mar=c(4,4,4,7))
 	par(xpd=TRUE)
 	plot(pca$x[,1], pca$x[,2], col="white", xlab="PC1", ylab="PC2")
-	text(pca$x[,1], pca$x[,2], batch$sample, col=as.numeric(batch$group), cex=0.8)
+	text(pca$x[,1], pca$x[,2], batch$sample, col=as.numeric(batch$group), cex=cexLabel)
 	legend(x=par("usr")[2], y=max(par("usr")[3:4]), levels(batch$group), col=1:length(levels(batch$group)), pch=1)
 
 	dev.off()

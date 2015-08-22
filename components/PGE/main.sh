@@ -19,7 +19,7 @@ fi
 
 # enrichment
 set -ex
-zcat ${REFERENCE} | perl -ne 'print "$4\t$1\t$2\t$3\n" if (/^([^\t]+).*\tgene\t(\d+)\t(\d+)\t.*gene_id "([^"]+)/)' > ${TMPDIR}/reference.txt
+zcat -f ${REFERENCE} | perl -ne 'print "$4\t$1\t$2\t$3\n" if (/^([^\t]+).*\tgene\t(\d+)\t(\d+)\t.*gene_id "([^"]+)/)' > ${TMPDIR}/reference.txt
 cat ${QUERY} | sed '1d' | sed 's/\"//g' > ${TMPDIR}/query.txt
 #sleep $[ ( $RANDOM % 30 )  + 1 ]
 $DOCKER perl /home/anduril/pge.pl -g -a ${PVALUE} -r user -f ${TMPDIR}/reference.txt -q ${TMPDIR}/query.txt > ${output_enrichedRegions}.part

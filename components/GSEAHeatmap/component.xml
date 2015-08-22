@@ -88,6 +88,12 @@
             </doc>
         </parameter>
 
+        <parameter name="topN" type="int" default="0">
+            <doc>
+				If N > 0, draw heatmap for top-N most enriched gene sets according to normalized enrichment score (NES), irrespective of any other set filter criteria.
+            </doc>
+        </parameter>
+
         <parameter name="RFilterExpr" type="string" default="">
             <doc>
 				Evaluated R expression to decide which gene sets to include in heatmap. Example: "FDR.q.val.iAMPvsNoniAMP &lt; 0.001"

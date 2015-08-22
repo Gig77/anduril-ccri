@@ -21,15 +21,18 @@ execute <- function(cf) {
 	caption <- get.parameter(cf, 'caption', 'string')
 	sampleSize <- get.parameter(cf, 'sampleSize', 'int')
 	cexLabel <- get.parameter(cf, 'cexLabel', 'float')
+	cexPoint <- get.parameter(cf, 'cexPoint', 'float')
+	minP <- get.parameter(cf, 'minP', 'float')
 	
 	# prepare data
-	res <- data.frame(id=expr[,1], log2FoldChange=expr[,fccol], pvalue=pmax(expr[,pcol], 1e-200), padj=expr[,qcol])
+	res <- data.frame(id=expr[,1], log2FoldChange=expr[,fccol], pvalue=pmax(expr[,pcol], minP), padj=expr[,qcol], stringsAsFactors = F)
 
 	if (get.input(cf, "geneNames") != "") {
 	  geneNames <- CSV.read(get.input(cf, "geneNames"))
 	  res <- merge(res, geneNames[,c(1,geneNameCol)], by.x=1, by.y=1, all.x=T)
 	  res <- res[!duplicated(res$id),]
 	  names(res)[5] <- "Name"
+	  res$Name[is.na(res$Name) | res$Name == ""] <- res$id[is.na(res$Name) | res$Name == ""]
 	} else {
 	  res$Name <- res[,1]
 	}
@@ -60,17 +63,25 @@ execute <- function(cf) {
 	
 	# plot
 	pdf(file.path(out.dir, plot.file))
-	with(subset(res.sample, padj >  sigthresh & abs(log2FoldChange) <  lfcthresh), plot(log2FoldChange, -log10(pvalue), pch=20, col="lightgray", xlim=range(res.sample$log2FoldChange), ylim=range(-log10(res.sample$pvalue)), main=""))
-  with(subset(res.sample, padj <= sigthresh & abs(log2FoldChange) <  lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="black"))
-	with(subset(res.sample, padj >  sigthresh & abs(log2FoldChange) >= lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="blue"))
-	with(subset(res.sample, padj <= sigthresh & abs(log2FoldChange) >= lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
-  if (labelTopN > 0) {
+	with(subset(res.sample, padj >  sigthresh & abs(log2FoldChange) <  lfcthresh), plot(log2FoldChange, -log10(pvalue), pch=20, col="lightgray", xlim=c(min(res.sample$log2FoldChange)-1,max(res.sample$log2FoldChange)+1), ylim=range(-log10(res.sample$pvalue)), cex=cexPoint, main=""))
+  with(subset(res.sample, padj <= sigthresh & abs(log2FoldChange) <  lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="black", cex=cexPoint))
+	with(subset(res.sample, padj >  sigthresh & abs(log2FoldChange) >= lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="blue", cex=cexPoint))
+	with(subset(res.sample, padj <= sigthresh & abs(log2FoldChange) >= lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="red", cex=cexPoint))
+
+	# label points
+	if (labelTopN > 0) {
     library(calibrate)
-	res.sample.sorted <- res.sample[order(res.sample$padj, -abs(res.sample$log2FoldChange)),]
-	res.sample.sorted <- res.sample.sorted[!is.na(res.sample.sorted$padj),]
-	with(res.sample.sorted[1:min(labelTopN, nrow(res.sample.sorted)),], textxy(log2FoldChange, -log10(pvalue), labs=Name, cex=cexLabel, offset=0.7))
-	caption <- paste0(caption, " The top-", labelTopN, " most significant genes are labeled.")
-}
+    
+  	res.sample.sorted <- res.sample[order(res.sample$padj, -abs(res.sample$log2FoldChange)),]
+  	res.sample.sorted <- res.sample.sorted[!is.na(res.sample.sorted$padj) & res.sample.sorted$log2FoldChange > 0,]
+  	with(res.sample.sorted[1:min(labelTopN, nrow(res.sample.sorted)),], textxy(log2FoldChange, -log10(pvalue), labs=Name, cex=cexLabel, offset=0.7))
+
+  	res.sample.sorted <- res.sample[order(res.sample$padj, -abs(res.sample$log2FoldChange)),]
+  	res.sample.sorted <- res.sample.sorted[!is.na(res.sample.sorted$padj) & res.sample.sorted$log2FoldChange < 0,]
+  	with(res.sample.sorted[1:min(labelTopN, nrow(res.sample.sorted)),], textxy(log2FoldChange, -log10(pvalue), labs=Name, cex=cexLabel, offset=0.7))
+  	
+  	caption <- paste0(caption, " The top-", labelTopN, " most significant up- and down-regulated genes are labeled. P-values were capped at ", sprintf("%.1g", minP), ".")
+  }
   legend(legendpos, xjust=1, yjust=1, legend=c(paste("FDR<=",sigthresh,sep=""), paste("|LogFC|>=",lfcthresh,sep=""), "both"), pch=20, col=c("black","blue","red"))
   dev.off()
 	  

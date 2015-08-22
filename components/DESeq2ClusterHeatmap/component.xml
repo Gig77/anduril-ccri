@@ -34,6 +34,10 @@
             </doc>
         </parameter>
 
+		<parameter name="cexRow" type="float" default="0.8">
+			<doc>Expansion factor of row labels.</doc>
+		</parameter>
+
         <parameter name="sectionTitle" type="string">
             <doc>
 				Section title.

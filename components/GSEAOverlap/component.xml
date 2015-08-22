@@ -96,13 +96,26 @@
 
         <parameter name="sigCutoff" type="float" default="0.05">
             <doc>
-				FDR cut-off for a gene set to be included in analysis.
+				FDR cut-off for a gene set to be included in analysis. Overruled by 'topN' parameter.
             </doc>
         </parameter>
 
         <parameter name="hsigCutoff" type="float" default="0.01">
             <doc>
 				Gene set names with an FDR equal or below this cut-off will be colored red. Set to -1 to disable.
+            </doc>
+        </parameter>
+
+        <parameter name="nesCutoff" type="float" default="0">
+            <doc>
+				Minimum normalized enrichment score (NES) for a gene set to be included in analysis. Overruled by 'topN' parameter.
+            </doc>
+        </parameter>
+
+        <parameter name="topN" type="int" default="0">
+            <doc>
+				If after filtering by 'sigCutoff', 'nesCutoff' and 'similarityCutoffTree' more than N gene sets remain in tree, keep only top N most enriched (i.e. gene sets with highest NES). 
+				Default is no filtering, i.e. all significant gene sets.
             </doc>
         </parameter>
 

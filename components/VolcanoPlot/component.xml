@@ -85,6 +85,18 @@
             </doc>
         </parameter>
 
+        <parameter name="cexPoint" type="float" default="1">
+            <doc>
+				Expansion factor for point size.
+            </doc>
+        </parameter>
+
+        <parameter name="minP" type="float" default="1e-200">
+            <doc>
+				Minimum p-value. Smaller p-values are set to this minimum value to limit y-axis plot range.
+            </doc>
+        </parameter>
+
         <parameter name="legendpos" type="string" default="bottomright">
             <doc>
 				Position of legend in plot. 

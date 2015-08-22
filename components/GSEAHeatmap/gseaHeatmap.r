@@ -20,6 +20,7 @@ execute <- function(cf) {
   hsigCutoff <- get.parameter(cf, 'hsigCutoff',    type = 'float')
   nesCutoff <- get.parameter(cf, 'NESCutoff', type = 'float')
   filterExpr <- get.parameter(cf, 'RFilterExpr', type = 'string')
+  topN <- get.parameter(cf, 'topN', type = 'int')
   cexCol <- get.parameter(cf, 'cexCol', type = 'float')
   cexRow <- get.parameter(cf, 'cexRow', type = 'float')
   title <- get.parameter(cf, 'title',    type = 'string')
@@ -67,28 +68,35 @@ execute <- function(cf) {
 	
 	# geneset filtering
 	genesets <- merged
+	
 	if (!is.na(regexCategoryNames) && !is.null(regexCategoryNames) && nchar(regexCategoryNames) > 0) {
-	  genesets <- genesets[grepl(regexCategoryNames, genesets$CATEGORY, perl=T),]
+		genesets <- genesets[grepl(regexCategoryNames, genesets$CATEGORY, perl=T),]
 	}
 	if (!is.na(regexCategoryNamesExclude) && !is.null(regexCategoryNamesExclude) && nchar(regexCategoryNamesExclude) > 0) {
-	  genesets <- genesets[!grepl(regexCategoryNamesExclude, genesets$CATEGORY, perl=T),]
+		genesets <- genesets[!grepl(regexCategoryNamesExclude, genesets$CATEGORY, perl=T),]
 	}
 	if (!is.na(regexGeneSetNames) && !is.null(regexGeneSetNames) && nchar(regexGeneSetNames) > 0) {
-	  genesets <- genesets[grepl(regexGeneSetNames, genesets$NAME, perl=T),]
+		genesets <- genesets[grepl(regexGeneSetNames, genesets$NAME, perl=T),]
 	}
 	if (!is.na(regexGeneSetNamesExclude) && !is.null(regexGeneSetNamesExclude) && nchar(regexGeneSetNamesExclude) > 0) {
-	  genesets <- genesets[!grepl(regexGeneSetNamesExclude, genesets$NAME, perl=T),]
+		genesets <- genesets[!grepl(regexGeneSetNamesExclude, genesets$NAME, perl=T),]
 	}
 	
-	if (nchar(filterExpr) > 0) {
-	  genesets <- with(genesets, genesets[eval(parse(text=filterExpr)),])
+	if (topN > 0) {
+		genesets <- genesets[order(abs(genesets$NES.best), decreasing=T),]
+		genesets <- genesets[1:min(topN, nrow(genesets)),]
 	} else {
-    genesets <- genesets[genesets$FDR.best <= sigCutoff,]
-  }
+		if (nchar(filterExpr) > 0) {
+		  genesets <- with(genesets, genesets[eval(parse(text=filterExpr)),])
+		} else {
+	    genesets <- genesets[genesets$FDR.best <= sigCutoff,]
+	  }
 	
-	if (nesCutoff > 0) {
-	  genesets <- genesets[genesets$NES.best >= nesCutoff,]
-	}
+	  if (nesCutoff > 0) {
+		  genesets <- genesets[genesets$NES.best >= nesCutoff,]
+	  }
+    }
+
 
 	# prepare output directory
 	report.dir <- get.output(cf, 'document')

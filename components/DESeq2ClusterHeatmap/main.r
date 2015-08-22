@@ -10,6 +10,7 @@ execute <- function(cf) {
 	
 	# Params
 	caption <- get.parameter(cf, 'caption',    type = 'string')
+	cexRow <- get.parameter(cf, 'cexRow',    type = 'float')
 	section.title <- get.parameter(cf, 'sectionTitle', type = 'string')
 	section.type <- get.parameter(cf, 'sectionType', type = 'string')
 	do.rlog <- get.parameter(cf, 'rlog', type = 'boolean')
@@ -39,7 +40,7 @@ execute <- function(cf) {
 		
 		plot.file.rld <- sprintf('%s-heatmap-rlog.pdf', instance.name)
 		pdf(file.path(report.dir, plot.file.rld))
-		heatmap.2(dists.rld, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=0.8, cexCol=0.8, key.title="")
+		heatmap.2(dists.rld, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=cexRow, cexCol=cexRow, key.title="")
 		dev.off()
 	}
 
@@ -51,7 +52,7 @@ execute <- function(cf) {
 		
 		plot.file.vst <- sprintf('%s-heatmap-vst.pdf', instance.name)
 		pdf(file.path(report.dir, plot.file.vst))
-		heatmap.2(dists.vsd, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=0.8, cexCol=0.8, key.title="")
+		heatmap.2(dists.vsd, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=cexRow, cexCol=cexRow, key.title="")
 		dev.off()
 	}
 	
@@ -66,7 +67,7 @@ execute <- function(cf) {
 		
 		plot.file.voom <- sprintf('%s-heatmap-voom.pdf', instance.name)
 		pdf(file.path(report.dir, plot.file.voom))
-		heatmap.2(dists.voom, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=0.8, cexCol=0.8, key.title="")
+		heatmap.2(dists.voom, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=cexRow, cexCol=cexRow, key.title="")
 		dev.off()
 	}
 	

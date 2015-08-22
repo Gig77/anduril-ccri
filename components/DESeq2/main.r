@@ -3,7 +3,7 @@ library(componentSkeleton)
 execute <- function(cf) {
 
   # debug
-  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/sarah/results/anduril/execute/deseq_CTLA4IgVsCtrlD3/_command")
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/helena_veronika/results/anduril/execute/deseq_oeERvsEmpty/_command")
   #stop("HERE!")
   
   instance.name <- get.metadata(cf, 'instanceName')	

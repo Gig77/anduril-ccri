@@ -28,8 +28,9 @@ execute <- function(cf) {
 	# convert p-values to scores where sign indicates directionality (up or downregulated)
 	deg.named$logP <- ifelse(deg.named[,col.fc]>0, -log(deg.named[,col.p],10), log(deg.named[,col.p],10))
 	
-	# keep only gene name and score
+	# keep only gene name and score; uppercase gene name to allow GSEA with mouse HGNC symbols
 	rnk <- deg.named[order(deg.named$logP,decreasing=T), c(4, 5)]
+	rnk[,1] <- toupper(rnk[,1])
 	
 	# write output
 	out.file <- get.output(cf, 'rnk')
