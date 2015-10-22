@@ -25,6 +25,10 @@ execute <- function(cf) {
 	
 	stopifnot(controlGroup %in% sampleGroups$ID)
 	stopifnot(caseGroup %in% sampleGroups$ID)
+	
+	if (is.na(design) || is.null(design) || design == "") {
+		design = "~ group"
+	}
 
 	# prepare sample table for DESeq
 
@@ -40,6 +44,7 @@ execute <- function(cf) {
   stopifnot(length(caseSamples) > 0)
   sampleTable$group[sampleTable$Alias %in% caseSamples] <- caseGroup
 
+  otherGroupsSplit <- NULL
   if (otherGroups != "") {
     otherGroupsSplit <- unlist(strsplit(otherGroups, ','))
     for (otherGroup in otherGroupsSplit) {
