@@ -31,6 +31,11 @@
 				Options passed on to GSNAP command line. Overrides all other ways of specifying parameters. 
             </doc>
         </parameter>
+        <parameter name="inputType" type="string" default="auto">
+            <doc>
+				Type of input file ("BAM", "FASTQ", or "auto"). Deduced from file suffix if set to "auto" (default). 
+            </doc>
+        </parameter>
         <parameter name="executable" type="string" default="gsnap">
             <doc>
 				Executable to run. 'gsnap' (default) or 'gsnapl' for long genomes (> 4 GB). 
