@@ -24,6 +24,9 @@ execute <- function(cf) {
 	includeGroups <- get.parameter(cf, 'includeGroups', 'string')
 	if (includeGroups != "") {
 	  sample2group <- sample2group[sample2group$group %in% unlist(strsplit(includeGroups, ',')),]
+	  if (nrow(sample2group) == 0) {
+		  stop(sprintf("ERROR: No sample found belonging to one of specified groups: %s", includeGroups))
+	  }
 	}
 	
 	# translate ensembl gene ids to HGNC symbols
@@ -130,7 +133,7 @@ execute <- function(cf) {
   	                   whisker.up <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[5]})
   	                   whisker.dn <- tapply(y, factor(x), FUN=function(d) { boxplot.stats(d)$stats[1]})
   	                   lab <- as.character(gexpr.thispage$sample[subscripts])
-  	                   lab[y < whisker.up[x] & y > whisker.dn[x]] <- ""
+  	                   lab[y <= whisker.up[x] & y >= whisker.dn[x]] <- ""
   	                   panel.text(x, y, labels=lab, cex=cex.sample.label)
   	                 }
   	               }))
