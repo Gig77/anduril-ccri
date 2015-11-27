@@ -13,12 +13,12 @@
 
     <inputs>
 
-        <input name="counts" type="TextFile" array="true">
-            <doc>Array containing names of read count files.</doc>
+        <input name="countMatrix" type="CSV" array="false">
+            <doc>Count matrix (e.g. from HTSeqExprMatrix output).</doc>
         </input>
 
         <input name="samples" type="CSV" array="false">
-            <doc>Samples.</doc>
+            <doc>Sample annotation.</doc>
         </input>
 
         <input name="sampleGroups" type="CSV" array="false">
@@ -62,9 +62,9 @@
             </doc>
         </parameter>
 
-        <parameter name="label" type="string" default="">
+        <parameter name="colSuffix" type="string" default="">
             <doc>
-            	Name of comparison. Will be appended to column names of output table to make them unique.
+            	Name of comparison. Appended to each column name of output table to make them unique.
             </doc>
         </parameter>
 
@@ -72,6 +72,13 @@
             <doc>
             	The minimum number of replicates required in order to replace outliers in a sample. If there are samples with so many replicates, 
             	the model will be refit after replacing these outliers, flagged by Cook’s distance. Set to 0 in order to never replace outliers.
+            </doc>
+        </parameter>
+
+        <parameter name="cooksCutoff" type="float" default="0.99">
+            <doc>
+            	The threshold for defining an outlier to be replaced. Defaults to the .99 quantile of the F(p, m - p) distribution, where p is the number of parameters 
+            	and m is the number of samples. Only used if number of replicates in group is equal or greater than 'minReplicatesForReplace'.
             </doc>
         </parameter>
 

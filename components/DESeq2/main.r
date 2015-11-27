@@ -3,25 +3,26 @@ library(componentSkeleton)
 execute <- function(cf) {
 
   # debug
-  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/helena_veronika/results/anduril/execute/deseq_oeERvsEmpty/_command")
+  #rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/fikret/results/anduril/execute/deseq_DTCfemale_DTCmale/_command")
   #stop("HERE!")
   
   instance.name <- get.metadata(cf, 'instanceName')	
 
   # inputs
   
-  countFiles   <- Array.read(cf,"counts")
+  countMatrix  <- Matrix.read(get.input(cf, "countMatrix"))
   samples      <- CSV.read(get.input(cf, 'samples'))
   sampleGroups <- CSV.read(get.input(cf, 'sampleGroups'))
   
 	# params
   
-	controlGroup <- get.parameter(cf, 'controlGroup',    type = 'string')
-	caseGroup    <- get.parameter(cf, 'caseGroup',       type = 'string')
-	otherGroups  <- get.parameter(cf, "otherGroups", type = 'string')
-	label        <- get.parameter(cf, 'label',          type = 'string')
+  caseGroup    <- get.parameter(cf, 'caseGroup',       type = 'string')
+  controlGroup <- get.parameter(cf, 'controlGroup',    type = 'string')
+	otherGroups  <- get.parameter(cf, "otherGroups",	 type = 'string')
+	colSuffix    <- get.parameter(cf, 'colSuffix',       type = 'string')
 	minReplicatesForReplace <- get.parameter(cf, "minReplicatesForReplace", type = 'int')
 	design       <- get.parameter(cf, 'design',          type = 'string')
+	cooksCutoff  <- get.parameter(cf, 'cooksCutoff',     type = 'float')
 	
 	stopifnot(controlGroup %in% sampleGroups$ID)
 	stopifnot(caseGroup %in% sampleGroups$ID)
@@ -31,47 +32,74 @@ execute <- function(cf) {
 	}
 
 	# prepare sample table for DESeq
+  rownames(samples) <- samples$Alias
+	samples$group <- NA
 
-	sampleTable <- merge(samples, countFiles, by.x="Alias", by.y="Key", all.x = T)
-	names(sampleTable)[ncol(sampleTable)] <- "fileName"
-	sampleTable$group <- NA
-  
 	controlSamples <- unlist(strsplit(sampleGroups[sampleGroups[,'ID']==controlGroup,'Members'],','))
 	stopifnot(length(controlSamples) > 0)
-	sampleTable$group[sampleTable$Alias %in% controlSamples] <- controlGroup
+	samples$group[samples$Alias %in% controlSamples] <- controlGroup
 
   caseSamples <- unlist(strsplit(sampleGroups[sampleGroups[,'ID']==caseGroup,'Members'],','))
   stopifnot(length(caseSamples) > 0)
-  sampleTable$group[sampleTable$Alias %in% caseSamples] <- caseGroup
+  samples$group[samples$Alias %in% caseSamples] <- caseGroup
 
+  # check
+  samplesNotFound <- c(caseSamples, controlSamples)[!c(caseSamples, controlSamples) %in% colnames(countMatrix)]
+  if (length(samplesNotFound) > 0) {
+    stop("ERROR: The following samples were not present in count matrix: ", paste(samplesNotFound, sep = ","))
+  }
+  
   otherGroupsSplit <- NULL
   if (otherGroups != "") {
     otherGroupsSplit <- unlist(strsplit(otherGroups, ','))
     for (otherGroup in otherGroupsSplit) {
       otherGroupMembers <- unlist(strsplit(sampleGroups[sampleGroups[,'ID']==otherGroup,'Members'],','))
       stopifnot(length(otherGroupMembers) > 0)
-      sampleTable$group[sampleTable$Alias %in% otherGroupMembers] <- otherGroup
+      samples$group[samples$Alias %in% otherGroupMembers] <- otherGroup
     }
   }  
   
-  sampleTable <- sampleTable[!is.na(sampleTable$group),]
-  sampleTable$group <- factor(sampleTable$group, levels=c(controlGroup, caseGroup, otherGroupsSplit))
-  sampleTable <- sampleTable[,c(c("Alias", "fileName", "group"), names(sampleTable)[!names(sampleTable) %in% c("Alias", "fileName", "group")])]
+  samples <- samples[!is.na(samples$group),]
+  samples$group <- factor(samples$group, levels=c(controlGroup, caseGroup, otherGroupsSplit))
+  countMatrix <- countMatrix[,rownames(samples)]
 
-
-	print(sprintf("Groups in model: %s", paste(levels(sampleTable$group), collapse=",")))
+	print(sprintf("Groups in model: %s", paste(levels(samples$group), collapse=",")))
   print(sprintf("Contrasts: %s,%s", caseGroup, controlGroup))
   
   # DESeq2
   
-	library(DESeq2)
-	ddsHTSeq  <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = "/", design = as.formula(design))
-	ddsHTSeq  <- DESeq(ddsHTSeq, minReplicatesForReplace=ifelse(minReplicatesForReplace > 0, minReplicatesForReplace, Inf))
-	res       <- results(ddsHTSeq, contrast=c("group", caseGroup, controlGroup), cooksCutoff=FALSE)
+  library(DESeq2)
+  
+  # read in count matrix
+  dds <- DESeqDataSetFromMatrix(countData = countMatrix, colData = samples, design = as.formula(design))
+  
+  # estimate size factors
+  dds <- estimateSizeFactors(dds)
+  counts.norm <- as.data.frame(counts(dds, normalized=T))
+  
+  # estimate dispersion
+  dds <- estimateDispersions(dds)
+  
+  # fit model
+  print("Performing negative binomial Wald test")
+  dds <- nbinomWaldTest(dds)
+  
+  # replace outliers and fit again
+  # NOTE: we have to do it this way because 'cooksCutoff' parameter cannot be specified with DESeq function
+  # (it always defaults to 0.99)
+  # original call instead of the above: dds <- DESeq(dds, minReplicatesForReplace=ifelse(minReplicatesForReplace > 0, minReplicatesForReplace, Inf))
+  
+  if (minReplicatesForReplace > 0) {
+    print(paste0("Replacing outliers and re-fitting model: minReplicatesForReplace=", minReplicatesForReplace, ", cooksCutoff=", cooksCutoff))
+    dds <- replaceOutliers(dds, cooksCutoff = cooksCutoff, minReplicates = minReplicatesForReplace)
+    dds <- nbinomWaldTest(dds)
+  }
+  
+  # extract results using case and control group as contrasts
+	res <- results(dds, contrast=c("group", caseGroup, controlGroup), cooksCutoff=FALSE)
 	results.out <- data.frame(ids=rownames(res), as.data.frame(res))
 	
 	# add normalized sample counts to output and compute separate means for experiment and control group	
-	counts.norm <- as.data.frame(counts(ddsHTSeq, normalized=T))
 	results.out <- merge(results.out, subset(counts.norm, select=c(caseSamples, controlSamples)), by.x="ids", by.y="row.names", all.x=T)
 	results.out$baseMean <- rowMeans(results.out[,c(caseSamples, controlSamples)], na.rm=T)
 	if (length(caseSamples) > 1) { results.out$baseMeanE <- rowMeans(results.out[,caseSamples], na.rm=T) } else { results.out$baseMeanE <-results.out[,caseSamples] }
@@ -79,10 +107,10 @@ execute <- function(cf) {
 	
 	coln1 <- c('log2FoldChange', 'pvalue', 'padj', 'baseMean', 'baseMeanE', 'baseMeanC', 'lfcSE', 'stat')
 	coln2 <- c('fc',             'p',      'q',    'meanExpr', 'meanExprE', 'meanExprC', 'fcSE',  'stat')
-	coln2 <- paste(coln2, label, sep='')
+	coln2 <- paste(coln2, colSuffix, sep='')
 	colnames(results.out)[match(coln1,colnames(results.out))] <- coln2
 	results.out <- results.out[,c("ids", coln2, caseSamples, controlSamples)]
-	results.out <- results.out[order(results.out[,paste0("q", label)]),]
+	results.out <- results.out[order(results.out[,paste0("q", colSuffix)]),]
 
 	CSV.write(get.output(cf, 'results'), results.out)
 	
