@@ -109,6 +109,12 @@
             </doc>
         </parameter>
 
+        <parameter name="excludeGenes" type="string" default="">
+            <doc>
+				Gene names to exclude from plot.
+            </doc>
+        </parameter>
+
         <parameter name="caption" type="string" default="Volcano plot.">
             <doc>
 				Figure caption.
