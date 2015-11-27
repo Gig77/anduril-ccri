@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>EDASeq</name>
+    <version>1.0</version>
+    <doc>Takes raw count matrix and outputs count matrix normalized by GC content using R/Bioconductor package EDASeq.</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>QC</category>
+
+    <launcher type="R">
+        <argument name="file" value="EDASeq.r"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="countMatrix" type="Matrix">
+            <doc>Count matrix</doc>
+        </input>
+
+        <input name="annotation" type="CSV">
+            <doc>Feature annotations including a column 'gc' containing the GC content for each feature in percent.</doc>
+        </input>
+
+    </inputs>
+ 
+    <outputs>
+
+		<output name="normalizedCountsWithinLane" type="Matrix">
+			<doc>Normalized count matrix after within-lane (= GC content) normalization.</doc>
+		</output>
+
+		<output name="offsetsWithinLane" type="Matrix">
+			<doc>Integer-rounded count offsets after within-lane normalization.</doc>
+		</output>
+
+		<output name="normalizedCountsBetweenLane" type="Matrix">
+			<doc>Normalized count matrix after within-lane (= GC content) AND between-lane (= library size) normalization.</doc>
+		</output>
+
+		<output name="offsetsBetweenLane" type="Matrix">
+			<doc>Integer-rounded count offsets after both within-lane (= GC content) AND between-lane (= library size) normalization.</doc>
+		</output>
+
+		<output name="DESeqNormFactors" type="Matrix">
+			<doc>Count normalization factors that can be used _instead_ of the normalized count matrix for calling differentially expressed genes with DESeq2.</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="minReadCount" type="int" default="10">
+            <doc>
+				Maximum total number of reads across all samples. Features below this threshold will be excluded from count matrix.
+            </doc>
+        </parameter>
+
+        <parameter name="method" type="string" default="full">
+            <doc>
+				Normalization method. 
+				'loess': loess robust local regression of read counts (log); 
+				'median': global-scaling between feature strata using the median; 
+				'upper': global-scaling between feature strata using the upper-quartile; 
+				'full': full-quantile normalization between feature strata.
+            </doc>
+        </parameter>
+
+    </parameters>
+    
+</component>
+
