@@ -14,6 +14,7 @@ execute <- function(cf) {
 	col.p <- get.parameter(cf, "colP")
 	col.fc <- get.parameter(cf, "colFC")
 	min.p <- get.parameter(cf, "minP", "float")
+	rank.by <- get.parameter(cf, "rankBy", "string")
 	
 	# map IDs to name
 	deg.named <- merge(deg[,c("ids", col.p, col.fc)], annotation[,c(1,2)], by.x="ids", by.y=names(annotation)[1])
@@ -26,10 +27,18 @@ execute <- function(cf) {
 	deg.named <- deg.named[ave(deg.named[,col.p], deg.named[,4], FUN=min) == deg.named[,col.p],]
 
 	# convert p-values to scores where sign indicates directionality (up or downregulated)
-	deg.named$logP <- ifelse(deg.named[,col.fc]>0, -log(deg.named[,col.p],10), log(deg.named[,col.p],10))
+	if (rank.by == "p") {
+		deg.named$score <- ifelse(deg.named[,col.fc]>0, -log(deg.named[,col.p],10), log(deg.named[,col.p],10))
+	} else if (rank.by == "fc") {
+		deg.named$score <- deg.named[,col.fc]
+	} else if (rank.by == "pi") {
+		deg.named$score <- deg.named[,col.fc] * -log(deg.named[,col.p],10)
+	} else {
+		stop(sprintf("ERROR: Unknown value for parameter 'rankBy': %s", rank.by))
+	}
 	
 	# keep only gene name and score; uppercase gene name to allow GSEA with mouse HGNC symbols
-	rnk <- deg.named[order(deg.named$logP,decreasing=T), c(4, 5)]
+	rnk <- deg.named[order(deg.named$score,decreasing=T), c(4, 5)]
 	rnk[,1] <- toupper(rnk[,1])
 	
 	# write output

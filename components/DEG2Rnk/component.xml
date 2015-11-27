@@ -51,6 +51,15 @@
             </doc>
         </parameter>
 
+        <parameter name="rankBy" type="string" default="p">
+            <doc>
+				Rank by p-value ('p', default), fold-change ('fc'), or the combination of both ('pi').
+				'pi' is computed by multiplying fold-change with -log10(p-value) according to Xiao et al. (2014) (http://www.ncbi.nlm.nih.gov/pubmed/22321699).
+				If ranked by fold-change, an additional cut-off on the minimum p-value (parameter 'minP') is recommended (e.g. '0.1') to exclude 
+				genes with insignificant fold-changes caused by highly variable expression measurements.
+            </doc>
+        </parameter>
+
     </parameters>
     
 </component>
