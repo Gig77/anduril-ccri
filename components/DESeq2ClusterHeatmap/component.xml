@@ -13,15 +13,33 @@
     </launcher>
 
 	<inputs>
-		<input name="geneCounts" type="TextFile" array="true">
-			<doc>Text files with gene counts</doc>
+
+		<input name="countMatrix" type="CSV" array="false">
+            <doc>Count matrix (e.g. from HTSeqExprMatrix output).</doc>
 		</input>
+
+		<input name="samples" type="CSV" array="false">
+            <doc>Sample annotation.</doc>
+		</input>
+
 	</inputs>
 	
 	<outputs>
 	
 		<output name="report" type="Latex">
 			<doc>Clustering report</doc>
+		</output>
+
+		<output name="rlog" type="Matrix">
+			<doc>Matrix containing expression values after regularized log (rlog) transformation. Set parameter 'rlog' to true for this output to be produced.</doc>
+		</output>
+
+		<output name="vst" type="Matrix">
+			<doc>Matrix containing expression values after variance stabilizing transformation (VST). Set parameter 'vst' to true for this output to be produced.</doc>
+		</output>
+
+		<output name="voom" type="Matrix">
+			<doc>Matrix containing expression values after edgeR/voom transformation. Set parameter 'voom' to true for this output to be produced.</doc>
 		</output>
 	
 	</outputs>
