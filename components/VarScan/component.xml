@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>VarScan</name>
+    <version>1.0</version>
+    <doc>Calls genomic sites of variation using VarScan.</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>VariationAnalysis</category>
+
+    <launcher type="bash">
+        <argument name="file" value="main.sh"/>
+    </launcher>
+
+    <inputs>
+        <input name="reference" type="FASTA" optional="false">
+            <doc>The reference genome together with possible auxiliary files.</doc>
+        </input>
+
+        <input name="bam1" type="BAM" optional="false">
+            <doc>Aligned input bam file of normal or tumor sample.</doc>
+        </input>
+
+        <input name="bam2" type="BAM" optional="true">
+            <doc>(Currently no supported) Aligned tumor bam file to call from in tumor/normal comparison. The variants from 'bam1' and 'bam2' will be compared in order to separate germline and somatic variants.</doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+        <output name="variants" type="VCF">
+            <doc>Output snp and indel calls.</doc>
+        </output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="jar" type="string">
+            <doc>Path to the VarScan jar file (typically VarScan.v2.X.Y.jar varying with the version).</doc>
+        </parameter>
+
+        <parameter name="options" type="string" default="">
+            <doc>This string will be added to the command and can include any number of options in the software specific format.</doc>
+        </parameter>
+
+        <parameter name="optionsSam" type="string" default="">
+            <doc>This string will be added to the SAMtools mpileup command and can include any number of options in the software specific format, e.g. "-q 1" will skip zero-quality alignments.</doc>
+        </parameter>
+	
+    </parameters>
+
+</component>
+
