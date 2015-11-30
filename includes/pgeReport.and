@@ -1,0 +1,76 @@
+function PGEReport
+(
+  	CSV	   query,
+  	GTF	   reference,
+  	string title,
+  	float  pvalue,
+  	boolean includeHeader
+) -> (Latex report) 
+{
+	@out.document.filename = "document.tex"
+	pge = PGE
+	(
+		query=query, 
+		reference=reference, 
+		pvalue=pvalue,
+		maxRegionsPerChr=25,
+		sectionTitle="PGE: " + std.quote(title, type="Latex"),
+		caption="Ideogram showing the genomic location of differentially expressed genes (DEG; comparing "+std.quote(title, type="Latex")+") and enriched chromosomal regions. DEGs are indicated above " +
+		        "chromosomes with red tick marks. If found, significantly enriched chromosomal regions (p-value below "+pvalue+") are shown as blue segments below chromosomes. Segment color intensity " +
+		        "reflects statistical significance, from most significant (dark blue) to least significant (light blue). Enriched " +
+		        "regions may overlap in which case segments are drawn on top of each other.",
+		docker="biowaste:5000/anduril/pge"
+	)
+	
+	// translate Ensembl gene IDs into HGNC symbols using gene annotation table
+	expanded = ExpandCollapse(pge.enrichedRegions, listCols="genes")
+	annotated = TableQuery
+	(
+		table1 = expanded, 
+		table2 = geneAnnot,
+		table3 = query,
+		query  = 
+			'''
+				SELECT A."chr", A."start", A."end", A."pvalue", A."pvalueadj", A."common", A."size", 
+				       GROUP_CONCAT('\textcolor' || CASEWHEN(C."fc">0, '{red}{', '{blue}{') || IFNULL(B."Associated Gene Name", A."genes") || '}' SEPARATOR ', ') AS HGNC 
+				FROM table1 A 
+					 LEFT OUTER JOIN table2 B ON A."genes" = B."Ensembl Gene ID"
+					 LEFT OUTER JOIN table3 C ON A."genes" = C."ids"
+				GROUP BY A."chr", A."start", A."end", A."pvalue", A."pvalueadj", A."common", A."size"
+			'''
+	)
+
+	enrichedRegions = CSV2Latex
+	(
+		tabledata	 = annotated,
+        caption      = "List of significantly enriched regions comparing "+std.quote(title, type="Latex")+". Differentially expressed genes (DEGs) found in enriched "+
+                       "regions are shown in the last column, whereas up-regulated genes are shown in \\textcolor{red}{red} and " +
+                       "down-regulated genes are shown in \\textcolor{blue}{blue}. Regions sorted by p-value (most to least significant).",
+//      columns      = "chr,start,end,pvalue,pvalueadj,common,size",
+		rename       = "HGNC=DEGs in region",
+//      listCols     = "Genes",
+		colFormat    = "crrrrccp{9.0cm}",
+        numberFormat = "pvalue=#0.0E00,pvalueadj=#0.0E00,HGNC=RAW_LATEX",
+        countRows    = true,
+        skipEmpty    = true
+    )
+
+	header = ""
+	if (includeHeader) {
+		header = """In this analysis, genes found to be differentially expressed between groups are tested for positional enrichment
+	                across the genome using a hypergeometric test. Significantly enriched regions may provide insights into underlying gene copy number changes (gene dosage effect) 
+	                or into neighboring genes that are co-regulated due to shared cis-regulatory motifs or epigenetic states (e.g. open chromatin regions).
+	                The method used in this analysis, including statistical testing and filtering of overlapping regions, is described in De Preter et al. (2008).
+	                """
+	}
+
+    pgeReport = LatexCombiner
+    (
+    	head=header, 
+    	latex1=pge.document, 
+    	latex2=enrichedRegions.report, 
+    	pagebreak=true
+    )
+	
+	return pgeReport
+}

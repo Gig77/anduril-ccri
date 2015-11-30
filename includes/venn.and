@@ -1,0 +1,108 @@
+function VennSetTableReport
+(
+	CSV    vennSetData,
+	CSV    geneAnnot,
+	record vennSetNames,
+	record outputComparisons,
+	record degs,
+	string section,
+	string sectionType,
+	string caption,
+	string orderBy = "average",
+	string orderCol = "FC"  // "FC" (default) or "q"
+) -> (Latex report)
+{
+	// collect input tables in record for TableQuery
+	
+	tables = record(vennSetData=vennSetData)
+	tables["geneAnnot"] = geneAnnot
+	for ID, comparison : outputComparisons	{ tables[std.quote(comparison, type="Anduril")] = degs[comparison] }
+
+	// build SQL statement dynamically depending on input comparisons
+	
+	query = 'SELECT DISTINCT vennSetData."Members" AS "Ensembl", geneAnnot."Associated Gene Name" AS "Gene", '
+	for ID, comparison : outputComparisons	
+	{ 
+		comparisonQuoted = std.quote(comparison, type="Anduril") 
+		query = query + comparisonQuoted + '."fc' + comparison + '" AS "FC_' + comparison + '", ' + comparisonQuoted + '."q' + comparison + '" AS "q_' + comparison + '", ' 
+	}
+	query = query + 'SUBSTR(geneAnnot."Description", 1, 65)  AS "Description" '	
+
+	query = query + 'FROM vennSetData '
+	query = query + 'LEFT JOIN geneAnnot ON vennSetData."Members" = geneAnnot."Ensembl Gene ID"'
+	for ID, comparison : outputComparisons	
+	{ 
+		comparison = std.quote(comparison, type="Anduril") 
+		query = query + ' LEFT JOIN ' + std.quote(comparison, type="Anduril") + ' ON vennSetData."Members" = ' + comparison + '."ids"' 
+	}
+
+	query = query + ' WHERE vennSetData."ID" IN ('
+	for ID, set : vennSetNames 
+	{
+		if (ID > 1) { query = query + ', ' }
+		query = query + "'" + set + "'"
+	}
+	query = query + ') AND LENGTH(vennSetData."Members") > 0' 
+
+	if (orderBy == "average") 
+	{
+		query = query + " ORDER BY ("
+		for ID, comparison : outputComparisons	
+		{ 
+			if (ID > 1) { query = query + '+' }
+			query = query + 'CASEWHEN("' + orderCol + '_' + comparison + '"=0,-300,LOG("q_' + comparison + '"))'
+		}
+		query = query + ')/' + std.length(outputComparisons)
+	}
+	else {
+		query = query + ' ORDER BY (CASEWHEN("' + orderCol + '_' + orderBy + '"=0,-300,LOG("q_' + orderBy + '")))'
+	}
+		
+	//std.echo(query)	
+	table = TableQuery
+	(
+		tables = tables,
+		query  = query
+	)
+	
+	// get table report
+	
+	columns = "Ensembl,Gene"
+	for ID, comparison : outputComparisons	{ columns = columns + ',FC_' + comparison + ',q_' + comparison }
+	columns = columns + ",Description"
+	
+	rename = "Description=Description"
+	syn = {"A", "B", "C", "D", "E", "F"}
+	for ID, comparison : outputComparisons	{ rename = rename + ',FC_' + comparison + '=fc(' + syn[ID] + '),q_' + comparison + '=q(' + syn[ID] + ')' }
+	
+	numberFormat = ""
+	for ID, comparison : outputComparisons	
+	{ 
+		if (numberFormat != "") { numberFormat = numberFormat + ',' }
+		numberFormat = numberFormat + 'FC_' + comparison + '=#0.0,q_' + comparison + '=#0.0E00'
+	}
+	
+	colFormat = "ll"
+	for ID, comparison : outputComparisons	{ colFormat = colFormat + 'rr' }
+	colFormat = colFormat + 'p{7.5cm}'
+	
+	tableReport = CSV2Latex
+	(
+		tabledata    = table,
+		refs         = hyperlinkRuleEnsemblGeneCards,
+		attach       = false,
+		columns      = columns,
+		rename       = rename,
+		numberFormat = numberFormat,
+		colFormat    = colFormat,
+		countRows    = true,
+		dropMissing  = false,
+		listCols     = "",
+		pageBreak    = false,
+		section      = section,
+		sectionType  = sectionType,
+		caption      = caption
+	)
+	
+	return tableReport.report
+}

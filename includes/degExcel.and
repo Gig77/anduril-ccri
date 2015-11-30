@@ -1,0 +1,158 @@
+function degExcelOutput
+(
+	Array<CSV>   degTables,
+	Array<CSV>   degAllLst,
+	CSV          linkRule,
+	CSV          geneNames,
+	CSV          geneAnnot,
+	record       comparisons,
+	float        fdrCutoff = -1
+) -> 
+(
+	Excel degs,       // Excel file with multiple sheets containing only DEGs for each comparison  
+	Excel allGenes    // combined DESeq2 results containing all genes below fdrCutoff
+)
+{	
+	degAnnotatedLst = record()
+	for ID, comparison : comparisons
+	{
+		quotedSampleIds = 'G."' + std.strReplace(comparison.sampleIds, ',', '", G."') + '"'	
+		degAnnotated = TableQuery
+		(
+			table1 = degAllLst[ID] @require,
+			table2 = geneNames     @require,
+			table3 = geneAnnot     @require,
+			query  = 
+				'''
+				SELECT G."ids"                        AS "Ensembl",
+				GROUP_CONCAT(A."Gene")                              AS "Gene",
+				D."Description"                       AS "Description",
+				CONCAT(D."Chromosome Name", D."Band") AS "Band",
+				G."fc'''+ID+'''", 
+				G."meanExprE'''+ID+'''"                AS "expr_'''+comparison.caseG+'''", 
+				G."meanExprC'''+ID+'''"                AS "expr_'''+comparison.controlG+'''", 
+				G."p'''+ID+'''", 
+				G."q'''+ID+'''",
+				'''+quotedSampleIds+'''
+				FROM table1 G
+					LEFT OUTER JOIN table2 AS A ON (G."ids" = A."Ensembl")
+					LEFT OUTER JOIN table3 AS D ON (G."ids" = D."Ensembl Gene ID")
+				GROUP BY G."ids", D."Description", CONCAT(D."Chromosome Name", D."Band"), G."fc'''+ID+'''", G."meanExprE'''+ID+'''", G."meanExprC'''+ID+'''", G."p'''+ID+'''", G."q'''+ID+'''", '''+quotedSampleIds+'''
+				ORDER  BY "q'''+ID+'''", ABS("fc'''+ID+'''") DESC
+				''',
+			@name  = "degAnnotated_" + std.quote(ID, type="Anduril"),
+			@enabled = true
+		)
+		degAnnotatedLst[ID] = degAnnotated
+	}
+	
+	eCSSRow = ""
+	eCSSRow = eCSSRow + std.concat("Row", "Column", "Format",  "Bold", "Align", "FontSize", "Underline", "TextColor", "BGColor", "Border", "Condition", sep="\t") + "\n"
+	eCSSRow = eCSSRow + std.concat("*",   "p",      "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
+	eCSSRow = eCSSRow + std.concat("*",   "q",      "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
+	eCSSRow = eCSSRow + std.concat("*",   "start",  "#,##0",   "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
+	eCSSRow = eCSSRow + std.concat("*",   "end",    "#,##0",   "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
+	degCalledCSS = StringInput(content=eCSSRow)
+
+	degCalledExcel = CSV2Excel
+	(
+		array         = degTables,
+		refs          = linkRule,
+		style         = degCalledCSS,
+		frozenColumns = 2,
+		frozenRows    = 1,
+		missingValue  = ''
+	)
+
+	comparedGroups = ""
+	for ID, comparison : comparisons { comparedGroups = comparedGroups + comparison.caseG + "," + comparison.controlG + "," }
+	comparisonIds = std.recordToString(comparisons, values=false)
+
+	degAllTable = REvaluate
+	(
+		array = degAnnotatedLst @require,
+		param1 = fdrCutoff,
+		param2 = comparedGroups,
+		param3 = comparisonIds,
+		script = StringInput(content="""
+			fdrCutoff <- param1
+			comparedGroups <- unique(unlist(strsplit(param2, ",")))
+			comparisonIds <- unique(unlist(strsplit(param3, ",")))
+			for (i in 1:length(array)) {
+			  if (i == 1) {
+			    table.out <- array[[i]][, c(1:9)]
+			    table.out$keep <- (!is.na(array[[i]][,9]) & array[[i]][,9] <= fdrCutoff)
+			  } else {
+			    table.out <- merge(table.out, array[[i]][, c(1:5,8,9)], all.x=T, all.y=T)
+	
+			    # copy over expression means in separate step because they cause duplicates in merge statement
+			    # do not overwrite existing values with NA's (some genes might be missing in input table)
+			    m <- match(table.out$Ensembl, array[[i]]$Ensembl)		
+			    meanA <- names(array[[i]])[6]
+			    meanB <- names(array[[i]])[7]
+			    table.out[,meanA] <- ifelse(!is.na(array[[i]][m, meanA]), array[[i]][m, meanA], table.out[,meanA])
+			    table.out[,meanB] <- ifelse(!is.na(array[[i]][m, meanB]), array[[i]][m, meanB], table.out[,meanB])
+			    
+			    table.out$keep <- (!is.na(table.out$keep) & table.out$keep) | (!is.na(array[[i]][m,9]) & array[[i]][m,9] <= fdrCutoff)
+			  }		  
+			}
+			
+			# throw out unflagged genes
+		    table.out <- table.out[table.out$keep,]
+			
+			# get output columns in right order
+			outcols <- names(table.out)[1:4]
+			for (grp in comparedGroups) {
+			  outcols <- c(outcols, paste0("expr_", grp))
+			}
+			for (cmp in comparisonIds) {
+			  outcols <- c(outcols, paste0("fc", cmp))
+			  outcols <- c(outcols, paste0("p", cmp))
+			  outcols <- c(outcols, paste0("q", cmp))
+			}
+			table.out <- table.out[,outcols]
+			
+			# don't want 'NA' in Excel sheet for missing values
+			table.out[is.na(table.out)] <- ""
+			"""),
+		@enabled = true
+	)
+	
+	// Excel sheet formatting
+	
+	eCSSRow = ""
+	eCSSRow = eCSSRow +     std.concat("Row", "Column", "Format",  "Bold", "Align", "FontSize", "Underline", "TextColor", "BGColor", "Border", "Condition",           sep="\t") + "\n"
+	eCSSRow = eCSSRow +     std.concat("1",   "*",      "NA",      "true", "NA",    "NA",       "NA",        "#000000",   "NA",      "NA",     "NA",                  sep="\t") + "\n"
+	counter = 1
+	for ID, comparison : comparisons
+	{ 
+		// no modulo...
+		if (counter == 1 || counter == 3 || counter == 5 || counter == 7 || counter == 9 || counter == 11 || counter == 13 || counter == 15 || counter == 17) {
+			bgColor = "#DCE6F1"
+		} else {
+			bgColor = "NA"
+		}
+		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                      sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "true", "NA",    "NA",       "NA",        "#0000BB",   bgColor,      "NA",     "<= -"+comparison.fcLimit, sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "true", "NA",    "NA",       "NA",        "#FF0000",   bgColor,      "NA",     ">= " +comparison.fcLimit, sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "p"+ID,     "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                      sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "p"+ID,     "0.0e00",  "true", "NA",    "NA",       "NA",        "#ff0000",   bgColor,      "NA",     "<= " +comparison.pLimit,  sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "q"+ID,     "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                      sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "q"+ID,     "0.0e00",  "true", "NA",    "NA",       "NA",        "#ff0000",   bgColor,      "NA",     "<= " +comparison.qLimit,  sep="\t") + "\n"
+		
+		counter = counter + 1
+	}
+	degAllCSS = StringInput(content=eCSSRow)
+	
+	degAllExcel = CSV2Excel
+	(
+		csv           = degAllTable.table,
+		refs          = linkRule,
+		style         = degAllCSS,
+		frozenColumns = 2,
+		frozenRows    = 1,
+		sheetNames    = "statistics"
+	)
+	
+	return record(degs=degCalledExcel.excelFile, allGenes=degAllExcel.excelFile)
+}

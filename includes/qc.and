@@ -1,0 +1,463 @@
+geneBodyCoveragePlotScript = StringInput(content=
+			'''
+			instance.name <- get.metadata(cf, 'instanceName')	
+			cov <- Matrix.read(get.input(cf, 'table1'))
+			document.dir <- get.output(cf, 'document')
+			section.title <- get.parameter(cf, 'param1', type = 'string')
+			section.type <- get.parameter(cf, 'param2', type = 'string')
+			cexRow <- get.parameter(cf, 'param3', type = 'float')
+			
+			
+			# for debugging
+			#save(list=ls(), file="/mnt/synology/data/christian/temp/dump.rda")
+			#stop(1)
+			
+			#dir.create(document.dir, recursive=TRUE)
+			
+			# convert to relative coverage by dividing counts by sums of rows
+			cov.norm <- sweep(cov, 1, apply(cov, 1, sum), '/')
+			rownames(cov.norm) <- unlist(lapply(strsplit(rownames(cov.norm), '\\.'), "[[", 1))
+			
+			# curves
+			plot.curve <- sprintf('coverageCurve_%s.pdf', instance.name)
+			pdf(file.path(document.dir, plot.curve))
+			x=1:100
+			icolor = colorRampPalette(c("#7fc97f","#beaed4","#fdc086","#ffff99","#386cb0","#f0027f"))(nrow(cov.norm))			
+			plot(x,cov.norm[1,], type='l', xlab="Gene body percentile (5'->3')", ylab="Relative coverage", lwd=0.8, col=icolor[1], ylim=c(0, max(cov.norm)))
+			for (s in 2:nrow(cov.norm)) {
+				lines(x,cov.norm[s,], type='l', col=icolor[s])
+			}
+			#legend(0,1,fill=icolor[1:nrow(cov.norm)], legend=rownames(cov.norm))
+			dev.off()
+			
+			plot.heatmap <- sprintf('coverageHeatmap_%s.pdf', instance.name)
+			pdf(file.path(document.dir, plot.heatmap))
+
+			rc <- cm.colors(ncol(cov.norm))
+			heatmap(cov.norm, scale=c("none"), keep.dendro=T, Colv = NA, labCol=NA,
+					col=cm.colors(256), margins = c(6, 8), cexRow=cexRow, cexCol=1,
+					xlab="Gene body percentile (5'->3')", 
+					add.expr=x_axis_expr <- axis(side=1,at=c(1,10,20,30,40,50,60,70,80,90,100),
+					labels=c("1","10","20","30","40","50","60","70","80","90","100"))
+			)
+			dev.off()
+
+			# prepare latex document
+			tex <- character()
+			tex <- c(tex, '\\clearpage')
+			if (nchar(section.type) > 0) {
+	  			section.type=paste('\\',section.type,sep='') # if section type is defined, add escape in the beginning
+			}
+			if (nchar(section.title) > 0) {
+	  			tex <- c(tex, sprintf('%s{%s}\\label{%s}', section.type, section.title,	instance.name))
+			}			
+			tex <- c(tex, latex.figure(plot.curve, image.height=16, caption="Gene body coverage 5' to 3 for selected 'house keeping' genes. The more uniform the distribution the better. Distributions heavily skewed to 5' or 3' usually indicate low quality of input RNA."))		    			    
+			tex <- c(tex, latex.figure(plot.heatmap, image.height=16, caption="Heatmap of gene body coverage from 5' to 3'. Darker colors indicate higher coverage. Samples (rows) with similar coverage distribution are clustered together. These clusters should not correspond to biological subgroups of interest to avoid batch effects."))		    			    
+
+			table.out <- data.frame() # not used
+			document.out <- tex
+			
+			return(0)
+			'''
+)
+/** Prepares some quality control plots for the given BAM files and expression matrix. */
+function getQCReport
+(
+	GTF              	gtf,
+	Matrix           	expr,
+	CSV					countMatrix,
+	CSV					inputSamples,
+	SampleGroupTable 	groups,
+	record              samples,
+	record		 	 	alignedBAMs,
+	string           	title = "Quality Control",
+	string              genome = "human/hg19",
+	int					readStatsSamplesPerRow = 8,
+	int                 readStatsYMax = 40,
+	float               cexClusterHeatmap = 0.8,
+	float               cexGeneBodyCoverage = 1,
+	float               cexMDS = 0.7,
+	float				gcBiasYMax = 8,
+	float				gcBiasYMin = -1,
+	string              batch1 = "",
+	string				covariate1 = "",
+	boolean             includeFastQC = false
+) -> (Latex report, Matrix transformedMatrix)
+{
+	qcReports = record()
+	
+	// ---------------------------------------
+	// number of reads per sample and category
+	// ---------------------------------------
+	
+	readStats = RNASeqReadStats
+	(
+		alignedBAMs = alignedBAMs, 
+		gtf         = gtf
+	)
+	
+	// create bar chart with read numbers
+	readStatsChart = RNASeqReadStatsBarChart
+	(
+		stats = readStats,
+		samplesPerRow = readStatsSamplesPerRow,
+		yMax          = readStatsYMax
+	)
+	
+	qcReports["readStatsChart"] = readStatsChart.document
+	
+	// ---------------------------------------
+	// FastQC reports (one per sample)
+	// ---------------------------------------
+	
+	fastQCReports = record()
+	for id, sample : samples 
+	{
+		fastqc = SeqQC
+		(
+			read        = INPUT(path=sample.file),
+			sectionType = "subsubsection", 
+			@cpu        = 2, 
+			@memory     = 500,
+			@execute    = "once", 
+			@name       = "fastqc_" + sample.alias,
+			@enabled    = includeFastQC
+		)
+		fastQCReports[sample.alias] = fastqc.report
+	}
+	
+	fastQCReport = LatexCombiner
+	(
+		array        = fastQCReports,
+		sectionTitle = "Sequence quality", 
+		sectionType  = "subsection",
+		@enabled     = includeFastQC
+	)
+
+	qcReports["fastQCReport"] = fastQCReport
+	
+	// ---------------------------------------
+	// gene body coverage
+	// ---------------------------------------
+	
+	geneBodyCoverage = {}
+	for sample, bam : alignedBAMs 
+	{
+		geneBodyCoverage[sample] = CalcGeneBodyCoverage
+		(
+			bam = bam,
+			name = sample,
+			genome = genome, 
+			docker = "biowaste:5000/anduril/rseqc",
+			@name="geneBodyCoverage_"+sample
+		)
+	}
+	
+	combinedCoverage = CSVJoin(array=geneBodyCoverage, useKeys=false)
+
+	geneBodyCoveragePlot = REvaluate
+	(
+		table1 = combinedCoverage.csv,
+		param1 = "Gene body coverage",
+		param2 = "subsection",
+		param3 = cexGeneBodyCoverage,
+		script = geneBodyCoveragePlotScript
+	)
+	
+	qcReports["geneBodyCoveragePlot"] = geneBodyCoveragePlot.document
+
+	// ---------------------------------------
+	// boxplots of expression values
+	// ---------------------------------------
+
+    cumsum = Plot2D
+    (
+    	y              = expr,
+		sectionTitle   = "Distribution of the expression values",
+		caption        = "Ordered list of expression values",
+		legendPosition = "off",
+		xLabel         = "genes",
+		yLabel         = "expression level",
+		title          = "",
+		sort           = true,
+		plotType       = "l",
+		imageType      = "single",
+		height         = 11
+	)
+
+    boxplot = BoxPlot
+    (
+    	matr1      = expr,
+		groups     = groups,
+		height     = 12,
+		width      = 20,
+		pagebreak  = true,
+		drawLegend = false,
+		plotType   = "boxplot",
+		pngImage   = false,
+		title1     = "Distributions of expression values per sample",
+		caption1   = "Samples should display similar distributions to avoid batch effects. If few samples have very different distributions consider removing them from the analysis.",
+		@bind      = cumsum
+	)
+	
+	qcReports["boxplot"] = boxplot
+	
+	// ---------------------------------------
+	// GC bias plot
+	// ---------------------------------------
+	
+	gclength = REvaluate
+	(
+		script = StringInput(content='''
+			library("biomaRt")
+			mart <- useMart(biomart="ENSEMBL_MART_ENSEMBL", host="grch37.ensembl.org", path="/biomart/martservice" ,dataset="hsapiens_gene_ensembl") # GRCh37, v75
+			table.out <- getBM(attributes=c("ensembl_gene_id", "percentage_gc_content", "transcript_length"), mart=mart)
+			table.out <- table.out[order(table.out$ensembl_gene_id, -table.out$transcript_length),]
+			table.out <- table.out[!duplicated(table.out$ensembl_gene_id),]
+			table.out <- data.frame(id=table.out$ensembl_gene_id, gc=table.out$percentage_gc_content, length=table.out$transcript_length)
+			return(0)
+		''')
+	)
+	
+	gcbias = GCBias
+	(
+		countMatrix = countMatrix,
+		sampleGroups = groups,
+		annotation = gclength.table,
+		sectionTitle = "GC bias plot",
+		sectionType = "subsection",
+		ymax = gcBiasYMax,
+		ymin = gcBiasYMin
+	)
+
+	qcReports["gcbias"] = gcbias.document
+
+	// ---------------------------------------
+	// expression-independent PCA to investigate library batch effects
+	// ---------------------------------------
+	
+	libraryBatches = LibraryBatchEffect
+	(
+		expr = expr,
+		groups = groups,
+		readStats = readStats,
+		geneBodyCoverages = combinedCoverage,
+		sectionTitle = "Sample clustering independent of gene expression values",
+		cexLabel = cexMDS
+	)
+	
+	qcReports["libraryBatches"] = libraryBatches.document
+
+	// ---------------------------------------
+	// sample cluster heatmap
+	// ---------------------------------------
+
+	samplesClusterHeatmap = DESeq2ClusterHeatmap
+	(
+		countMatrix  = countMatrix,
+		samples      = inputSamples,
+		sectionTitle = "Hierarchical clustering of samples",
+		rlog         = false,
+		vst          = true,
+		voom         = false,
+		cexRow       = cexClusterHeatmap
+	)
+	
+    mds = MDSPlot
+    (
+    	expr         = samplesClusterHeatmap.vst,
+		groups       = groups,
+		sectionTitle = "Sample clustering based on normalized gene expression values",
+		dimensions   = 2,
+		plotNames    = true,
+		cex          = cexMDS,
+		width        = 16,
+		pagebreak    = true,
+		caption       = "Sample clustering based on normalized gene expression values. Sample distances were computed by multi-dimensional scaling (MDS) and are proportional to global differences in normalized gene expression values."
+	)
+	
+	qcReports["mds"] = mds.report
+	
+	// ---------------------------------------
+	// batch-effect corrected PCA
+	// ---------------------------------------
+
+	if (batch1 != "")
+	{
+		exprBatch1 = REvaluate
+		(
+			table1 = samplesClusterHeatmap.vst,
+			table2 = inputSamples,
+			param1 = batch1,
+			param2 = covariate1,
+			script = StringInput(content='''
+				library(sva)
+				batch <- get.parameter(cf, 'param1', type = 'string')
+				covariate <- get.parameter(cf, 'param2', type = 'string')
+			    rownames(table2) <- table2$Alias
+			    table2 <- table2[table2$Alias %in% colnames(table1),]
+				model.full <- model.matrix(as.formula(paste0("~", covariate)), data=table2)
+				expr <- table1[,rownames(table2)] 
+				table.out <- ComBat(dat=expr, batch=table2[,batch], mod=model.full)
+				return(0)
+			''')
+		)
+
+	    mdsBatch1 = MDSPlot
+	    (
+	    	force expr   = exprBatch1.table,
+			groups       = groups,
+			sectionTitle = "Sample clustering after batch effect correction",
+			dimensions   = 2,
+			plotNames    = true,
+			cex          = 0.7,
+			width        = 16,
+			pagebreak    = true,
+			caption       = "Sample clustering based on normalized gene expression values after correcting for batch '" + batch1 + "'. Batch effect correction was performed using ComBat from R/Bioconductor package SVA." 
+		)
+
+		qcReports["mdsBatch1"] = mdsBatch1.report
+	}
+	
+	qcReports["samplesClusterHeatmap"] = samplesClusterHeatmap.report
+
+	// ---------------------------------------
+	// batch-effect corrected sample cluster heatmap
+	// ---------------------------------------
+
+	if (batch1 != "")
+	{
+		heatmapBatch1 = REvaluate
+		(
+			table1 = exprBatch1.table,
+			table2 = inputSamples,
+			param1 = cexClusterHeatmap,
+			param2 = batch1,
+			script = StringInput(content='''
+				instance.name <- get.metadata(cf, 'instanceName')	
+				document.dir <- get.output(cf, 'document')
+				cexRow <- get.parameter(cf, 'param1', type = 'float')
+				batch <- get.parameter(cf, 'param2', type = 'string')
+				caption <- "Cluster heatmap of sample-to-sample distances after batch effect correction."
+				section.type <- "subsection"
+				section.title <- "Hierarchical clustering of samples after correcting for batch effect"
+						
+				library("RColorBrewer")
+				library("gplots")
+				hmcol <- colorRampPalette(brewer.pal(10, "RdBu"))(256)
+				dists <- as.matrix(as.dist(1-cor(table1, method="spearman"))) # spearman correlation
+				
+				plot.heatmap <- sprintf('heatmap_%s.pdf', instance.name)
+				pdf(file.path(document.dir, plot.heatmap))
+				heatmap.2(dists, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=cexRow, cexCol=cexRow, key.title="")
+				dev.off()
+
+				# prepare latex document
+				tex <- character()
+				tex <- c(tex, '\\clearpage')
+				if (nchar(section.type) > 0) {
+		  			section.type=paste('\\',section.type,sep='') # if section type is defined, add escape in the beginning
+				}
+				if (nchar(section.title) > 0) {
+		  			tex <- c(tex, sprintf('%s{%s}\\label{%s}', section.type, section.title,	instance.name))
+				}			
+				tex <- c(tex, latex.figure(plot.heatmap, caption=paste0(caption, " Data transformation and gene filtering were the same as for the uncorrected heatmap, with the additional step of correcting for batch '", batch, "' using ComBat from R/Bioconductor package SVA before clustering.",
+				                                                                 " Sample distances based on Spearman correlation coefficient.")))		    			    
+				table.out <- data.frame() # not used
+				document.out <- tex
+			
+				return(0)	
+			''')
+		)
+		
+		qcReports["samplesClusterHeatmapBatch1"] = heatmapBatch1.document
+	}
+	
+	// ---------------------------------------
+	// combine all QC reports
+	// ---------------------------------------
+
+    report = LatexCombiner
+    (
+    	array        = qcReports,
+		sectionTitle = title,
+		sectionType  = "section",
+		pagebreak    = true
+	)
+	
+	return record(report=report, transformedMatrix=samplesClusterHeatmap.vst)
+}
+
+// note: the following function is inline and not in an external component such that BAM read counting can start immediately after alignment
+//       if we passed an array with all aligned BAM file names as parameter instead, we would have to wait until all BAM files are aligend before read counting begins
+function RNASeqReadStats
+(
+	GTF    gtf,
+	record alignedBAMs
+) -> (CSV readStats)
+{
+	// convert GTF file to set of BED files for read counting
+	bedAllExons = BashEvaluate(var1 = gtf, script='''zcat -f @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedProteinCoding = BashEvaluate(var1 = gtf, script='''zcat -f @var1@ | grep 'gene_biotype "protein_coding"' | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedrRNA = BashEvaluate(var1 = gtf, script='''zcat -f @var1@ | grep -P 'gene_biotype "(rRNA|Mt_rRNA)"' | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	
+	bedArray = ArrayConstructor
+	(
+		file1=bedAllExons.optOut1, 
+		file2=bedProteinCoding.optOut1, 
+		file3=bedrRNA.optOut1, 
+		key1="allExons", 
+		key2="proteinCoding", 
+		key3="rRNA"
+	)
+	
+	counts = record()
+	for sample, bam : alignedBAMs 
+	{
+		count = BashEvaluate
+		(
+			var1 = bam, 
+			array1=bedArray,
+			param1=sample,
+		    script='''
+		    	bedFiles=( $( getarrayfiles array1 ) )		    
+		    	bedAllExons=${bedFiles[$( getarraykeyindex array1 allExons )]}
+		    	bedrRNA=${bedFiles[$( getarraykeyindex array1 rRNA )]}
+		    	bedProteinCoding=${bedFiles[$( getarraykeyindex array1 proteinCoding )]}
+		    	
+		    	# copy BAM file locally to not overallocate synology cifs
+		    	TMP=$(tempfile)
+		    	cp @var1@ $TMP
+		    	
+		    	countTotal=$(samtools view -c $TMP)
+		    	countPassFilter=$(samtools view -c -F 512 $TMP)
+		    	countMapped=$(samtools view -c -F 772 $TMP)
+		    	countAllExons=$(samtools view -c -F 772 $TMP -L $bedAllExons)
+		    	countrRNA=$(samtools view -c -F 772 $TMP -L $bedrRNA)
+		    	countNonrRNA=$(($countAllExons-$countrRNA))
+		    	countProteinCoding=$(samtools view -c -F 772 $TMP -L $bedProteinCoding)
+		    	countUnique=$(samtools view -F 772 $TMP -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	countNonDup=$(samtools view -F 1796 $TMP -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	
+		    	rm $TMP
+		    	
+		    	echo -e "sample\ttotal\tpass-filter\tmapped\texonic\tnon-rRNA\tprotein\tuniquely mapped\tnon-duplicates" > @optOut1@
+		    	echo -e "@param1@\t$countTotal\t$countPassFilter\t$countMapped\t$countAllExons\t$countNonrRNA\t$countProteinCoding\t$countUnique\t$countNonDup" >> @optOut1@
+		    	''',
+		    @cpu=5,        // IO intensive job; limit slurm over-allocation by artificially increasing requested CPUs 
+		    @name=sample
+		) 
+		counts[sample] = count.optOut1
+	}
+	
+	combinedCounts = CSVListJoin
+	(
+		files=counts, 
+		fileCol=""
+	)
+	
+	return combinedCounts.join
+}
+
+
+

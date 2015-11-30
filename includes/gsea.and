@@ -1,0 +1,1674 @@
+function GSEAReport
+(
+	CSV    geneNames,
+	record enrichedUp,
+	record enrichedDn,
+	record minSetSizes,
+	record maxSetSizes,
+	record tableReportComparisons,
+	record expression,
+	int	   topNHeatmap = 0,
+	int	   topNTable = 0,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-2,
+	float  hsigCutoff = 1e-3,
+	float  overlapSigCutoff = 1e-2,
+	float  overlapHSigCutoff = 1e-3,
+	float  sigCutoffCustom = -1,
+	float  hsigCutoffCustom = -1
+) -> (Latex report)
+{
+	if (sigCutoffCustom == -1) sigCutoffCustom = sigCutoff
+	if (hsigCutoffCustom == -1) hsigCutoffCustom = hsigCutoff
+	
+	reports = record()
+	
+	category = "MSigDB"
+	if (std.exists(enrichedUp, key=category))
+	{
+		reports[category] = GSEAReportMSigDB
+		(
+			enrichedUp = enrichedUp[category],
+			enrichedDn = enrichedDn[category],
+			minSetSize = minSetSizes[category],
+			maxSetSize = maxSetSizes[category],
+			tableReportComparisons = tableReportComparisons,
+			topNHeatmap = topNHeatmap,
+			topNTable   = topNTable,
+			nesCutoff  = nesCutoff,
+			sigCutoff  = sigCutoff,
+			hsigCutoff = hsigCutoff,
+			@name      = category
+		)
+
+		reports["hematologic"] = GSEAReportHematologic
+		(
+			enrichedUp = enrichedUp[category],
+			enrichedDn = enrichedDn[category],
+			minSetSize = minSetSizes[category],
+			maxSetSize = maxSetSizes[category],
+			tableReportComparisons = tableReportComparisons,
+			topNHeatmap       = topNHeatmap,
+			topNTable   = topNTable,
+			nesCutoff  = nesCutoff,
+			sigCutoff  = sigCutoff,
+			hsigCutoff = hsigCutoff,
+			@name      = "hematologic"
+		)
+
+		reports["Custom"] = GSEAReportCustom
+		(
+			enrichedUp = enrichedUp[category],
+			enrichedDn = enrichedDn[category],
+			minSetSize = minSetSizes[category],
+			maxSetSize = maxSetSizes[category],
+			tableReportComparisons = tableReportComparisons,
+			topNHeatmap       = topNHeatmap,
+			topNTable   = topNTable,
+			nesCutoff  = nesCutoff,
+			sigCutoff  = sigCutoffCustom,
+			hsigCutoff = hsigCutoffCustom,
+			@name      = "Custom"
+		)
+	}
+
+	category = "GeneSigDB"
+	if (std.exists(enrichedUp, key=category))
+	{
+		reports[category] = GSEAReportGeneSigDB
+		(
+			enrichedUp = enrichedUp[category],
+			enrichedDn = enrichedDn[category],
+			minSetSize = minSetSizes[category],
+			maxSetSize = maxSetSizes[category],
+			tableReportComparisons = tableReportComparisons,
+			topNHeatmap       = topNHeatmap,
+			topNTable   = topNTable,
+			nesCutoff  = nesCutoff,
+			sigCutoff  = sigCutoff,
+			hsigCutoff = hsigCutoff,
+			@name      = category
+		)
+	}
+
+	category = "TFT"
+	if (std.exists(enrichedUp, key=category))
+	{
+		reports[category] = GSEAReportTFTargets
+		(
+			enrichedUp = enrichedUp[category],
+			enrichedDn = enrichedDn[category],
+			minSetSize = minSetSizes[category],
+			maxSetSize = maxSetSizes[category],
+			tableReportComparisons = tableReportComparisons,
+			topNHeatmap       = topNHeatmap,
+			topNTable   = topNTable,
+			nesCutoff  = nesCutoff,
+			sigCutoff  = sigCutoff,
+			hsigCutoff = hsigCutoff,
+			@name      = category
+		)
+	}
+
+	category = "DSigDB"
+	if (std.exists(enrichedUp, key=category))
+	{
+		reports[category] = GSEAReportDSigDB
+		(
+			enrichedUp = enrichedUp[category],
+			enrichedDn = enrichedDn[category],
+			minSetSize = minSetSizes[category],
+			maxSetSize = maxSetSizes[category],
+			tableReportComparisons = tableReportComparisons,
+			topNHeatmap       = topNHeatmap,
+			topNTable   = topNTable,
+			nesCutoff  = nesCutoff,
+			sigCutoff  = sigCutoff,
+			hsigCutoff = hsigCutoff,
+			@name      = category
+		)
+	}
+	
+	// GSEA overlap report
+	
+	enrichedUpByComparison = record()
+	enrichedDnByComparison = record()
+	
+	for ID, comparison : tableReportComparisons 
+	{
+		enrichedUpByComparison[ID] = record()
+		enrichedDnByComparison[ID] = record()
+		
+		for category, rec : enrichedUp 
+		{
+			enrichedUpByComparison[ID][category] = enrichedUp[category][ID]	
+			enrichedDnByComparison[ID][category] = enrichedDn[category][ID]
+		}	
+	}
+	
+	reports["overlap"] = GSEAOverlapReport
+	(
+		enrichedUp  = enrichedUpByComparison,
+		enrichedDn  = enrichedDnByComparison,
+		comparisons = tableReportComparisons,
+		expression  = expression,
+		geneNames   = geneNames,
+		topN        = 100,
+		maxRank     = 500,
+		sigCutoffs  = record(),
+		similarityCutoffsTree = record(),
+		nesCutoff   = nesCutoff,
+		sigCutoff   = overlapSigCutoff,
+ 		hsigCutoff  = overlapHSigCutoff,	
+		similarityCutoffTree = 0.3,
+		similarityCutoffTable = 0.3,
+		topNrecurrentGenes = 30
+	)
+
+	combinedReport = LatexCombiner(array = reports)
+
+	return combinedReport
+}
+
+function GSEAReportMSigDB
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportComparisons,
+	int    minSetSize,
+	int    maxSetSize,
+	int	   topNHeatmap = 0,
+	int    topNTable = 0,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-2,
+	float  hsigCutoff = 1e-3
+) -> (Latex report)
+{
+	reports = record()
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+	
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// PATHWAYS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Pathway"
+	title = "MSigDB 5.0 pathway gene sets"
+	description = "Gene sets in this category represent canonical representations of a biological process compiled by domain experts. Pathway source databases include KEGG, REACTOME, BIOCARTA, and PID."
+	filterStr = '''table.out <- table1[grepl("MSIGDB_C2_PATHWAYS", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "MSIGDB_C2_PATHWAYS",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// GO TERMS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "GO"
+	title = "MSigDB 5.0 GO terms"
+	description = "Gene sets are named by gene ontology (GO) terms and contain genes annotated by that term. Includes gene sets derived from GO biological processes (BP), cellular components (CC), and molecular functions (MF)."
+	filterStr = '''table.out <- table1[grepl("MSIGDB_C5_GO", table1$CATEGORY, perl=T) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "MSIGDB_C5_GO",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// POSITIONAL GENE SETS (C1)
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Positional"
+	title = "MSigDB 5.0 positional gene sets"
+	description = "Gene sets corresponding to each human chromosome and each cytogenetic band that has at least one gene."
+	filterStr = '''table.out <- table1[grepl("MSIGDB_C1_POSITIONAL", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "MSIGDB_C1_POSITIONAL",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+	
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// MIR TARGETS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Mir"
+	title = "MSigDB 5.0 miRNA targets"
+	description = "Sets of genes that share a 3'-UTR microRNA binding motif."
+	filterStr = '''table.out <- table1[grepl("MSIGDB_C3_MOTIF_MIR", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "MSIGDB_C3_MOTIF_MIR",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// SIGNALING
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Signaling"
+	title = "MSigDB 5.0 signaling gene sets"
+	description = "MSigDB 5.0 gene sets in this category contain the phrase 'SIGNALING' in their name."
+	filterStr = '''table.out <- table1[grepl("SIGNALING", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexGeneSetNames = "SIGNALING",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// CHEMICAL PERTURBATION
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "ChemPert"
+	title = "MSigDB 5.0 chemical perturbation gene sets"
+	description = "These gene sets represent expression signatures of genetic and chemical perturbations. A number of these gene sets come in pairs: an xxx\\_UP (xxx\\_DN) gene set " +
+			      "representing genes induced (repressed) by the perturbation. The MSigDB gene set page for each gene set lists the PubMed citation on which it is based."
+	filterStr = '''table.out <- table1[grepl("MSIGDB_C2_CGP", table1$CATEGORY) & grepl("(_UP|_DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "MSIGDB_C2_CGP",
+		regexGeneSetNames = "(_UP|_DN)$",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// OTHER
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Other"
+	title = "Other MSigDB 5.0 gene sets"
+	description = "These MSigDB 5.0 gene sets were significantly enriched and not assigned to any of the above categories."
+	filterStr = '''table.out <- table1[!grepl("(MSIGDB_C1_POSITIONAL|MSIGDB_C2_PATHWAYS|MSIGDB_C3_MOTIF|MSIGDB_C4_COMPUTATIONAL|MSIGDB_C5_GO)", table1$CATEGORY, perl=T) & !grepl("(_UP|_DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNamesExclude = "(MSIGDB_C1_POSITIONAL|MSIGDB_C2_PATHWAYS|MSIGDB_C3_MOTIF|MSIGDB_C4_COMPUTATIONAL|MSIGDB_C5_GO)",
+		regexGeneSetNamesExclude = "(_UP|_DN)$",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+
+	// ----
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA MSigDB 5.0",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function GSEAReportHematologic
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportComparisons,
+	int    minSetSize,
+	int    maxSetSize,
+	int	   topNHeatmap = 0,
+	int    topNTable = 0,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-2,
+	float  hsigCutoff = 1e-3
+) -> (Latex report)
+{
+	reports = record()
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+
+	category = "Hematologic"
+	title = "Hematologic gene sets"
+	description = "Enrichment of DEGs in hematologic gene sets extracted from MSigDB 5.0 (immunologic signatures, collection C7) and gene sets manually curated from the literature (e.g. Laurenti et al., 2013)."
+	filterStr = '''table.out <- table1[grepl("HEMATOLOGIC", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "HEMATOLOGIC",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = "",
+		sectionType = "",
+		@name = "report"+category
+	)
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA Hematologic",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function GSEAReportGeneSigDB
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportComparisons,
+	int    minSetSize,
+	int    maxSetSize,
+	int	   topNHeatmap = 0,
+	int    topNTable = 0,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-2,
+	float  hsigCutoff = 1e-3
+) -> (Latex report)
+{
+	reports = record()
+
+	category = "GeneSigDB"
+	title = "GeneSigDB 4.0 gene sets"
+	description = "Gene sets from GeneSigDB 4.0 (http://compbio.dfci.harvard.edu/genesigdb/). These gene sets represent fully traceable, standardized, annotated gene signatures " +
+	              "that have been manually curated from publications indexed in PubMed."
+	filterStr = '''table.out <- table1[table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsection",
+		includeDescription = true,
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = "",
+		sectionType = "",
+		@name = "report"+category
+	)
+
+	// ----
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA GeneSigDB 4.0",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function GSEAReportTFTargets
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportComparisons,
+	int    minSetSize,
+	int    maxSetSize,
+	int	   topNHeatmap = 0,
+	int    topNTable = 0,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-2,
+	float  hsigCutoff = 1e-3
+) -> (Latex report)
+{
+	reports = record()
+
+	category = "TFTargets"
+	title = "TF Targets"
+	description = "Gene sets containing both experimentally and computationally determined transcription factor (TF) target genes. " +
+			      "This includes 161 ENCODE gene sets for which TF targets were experimentally identified via ChIP-seq (downloaded from UCSC/hg19), " +
+			      "182 PAZAR gene sets with experimentally determined targets compiled from the literature (downloaded June, 2015), " +
+			      "194 Jaspar CORE gene sets corresponding to computationally predicted targets (downloaded from oPOSSUM database version 3.1), " +
+			      "and 615 MSigDB 5.0 gene sets containing TF targets as defined in the TRANSFAC database (version 7.4, http://www.gene-regulation.com/). " +
+			      "Note that these gene sets might be partially overlapping."
+	filterStr = '''table.out <- table1[table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsection",
+		includeDescription = false,
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = "",
+		sectionType = "",
+		@name = "report"+category
+	)
+
+	// ----
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA TF Targets",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function GSEAReportDSigDB
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportComparisons,
+	int    minSetSize,
+	int    maxSetSize,
+	int	   topNHeatmap = 0,
+	int    topNTable = 0,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-2,
+	float  hsigCutoff = 1e-3
+) -> (Latex report)
+{
+	reports = record()
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D1: FDA APPROVED DRUGS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "FDA"
+	title = "FDA Approved Drug Gene Sets"
+	description = "DSigDB 1.0 FDA Approved Drug Gene Sets (http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d1)"
+	filterStr = '''table.out <- table1[grepl("DSIGDB_D1_FDA", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "DSIGDB_D1_FDA",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D2: Kinase Inhibitors
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Kinase"
+	title = "Kinase Inhibitor Gene Sets"
+	description = "DSigDB 1.0 kinase inhibitors gene sets based on in vitro kinase profiling assays (http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d2)"
+	filterStr = '''table.out <- table1[grepl("DSIGDB_D2_KINASE", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "DSIGDB_D2_KINASE",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D3: PERTURBATION SIGNATURES (CMAP)
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Perturb"
+	title = "Perturbation Signatures"
+	description = "7,064 gene expression profiles from three cancer cell lines perturbed by 1,309 compounds from CMap (build 02). (http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d3)"
+	filterStr = '''table.out <- table1[grepl("DSIGDB_D3_CMAP_PERTURBATION", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "DSIGDB_D3_CMAP_PERTURBATION",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D4: COMPUTATIONAL SIGNATURES
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Comput"
+	title = "Computational Signatures"
+	description = "Drug signatures extracted from literature using a mixture of manual curation and automatic computational approaches. " + 
+				  "Includes text mining of drug-gene targets using Biomedical Object Search System (BOSS), " +
+				  "curation of targets from Comparative Toxicogenomics Database (CTD), " +
+				  "and manual curation of targets from the Therapeutics Targets Database (TTD). " +
+				  "Source: http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d4"
+	filterStr = '''table.out <- table1[grepl("DSIGDB_D4", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "DSIGDB_D4",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsubsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	// ----
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA DSigB 1.0",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function GSEAReportCustom
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportComparisons,
+	int    minSetSize,
+	int    maxSetSize,
+	int	   topNHeatmap = 0,
+	int    topNTable = 0,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-2,
+	float  hsigCutoff = 1e-3
+) -> (Latex report)
+{
+	reports = record()
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+
+	category = "Custom"
+	title = "Custom gene sets"
+	description = "Enrichment of custom gene sets extracted from various project-specific sources."
+	filterStr = '''table.out <- table1[grepl("CUSTOM", table1$CATEGORY) & table1$'FDR q-val' <= ''' + sigCutoff + ''' & abs(table1$NES) >= ''' + nesCutoff + ''',]'''
+	if (topNTable > 0) { filterStr = filterStr + ''' ; table.out <- table.out[order(abs(table.out$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]''' }
+	filter = StringInput(content=filterStr, @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		regexCategoryNames = "CUSTOM",
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = "",
+		sectionType = "",
+		@name = "report"+category
+	)
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA Custom",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+overlapTableConvertScript = StringInput(content=
+	'''
+	table.out <- table1
+	table.out$set1 <- gsub('_', ' ', table.out$set1, fixed=T)			
+	table.out$set2 <- gsub('_', ' ', table.out$set2, fixed=T)			
+	table.out$linkout1 <- gsub('$', '\\$', table.out$linkout1, fixed=T)			
+	table.out$linkout2 <- gsub('$', '\\$', table.out$linkout2, fixed=T)			
+	'''
+)
+
+function GSEAOverlapReport
+(
+	CSV    geneNames,	
+	record enrichedUp,
+	record enrichedDn,
+	record comparisons,
+	int    topN,
+	int    maxRank,
+	record sigCutoffs,
+	record similarityCutoffsTree,
+	record expression,
+	float  nesCutoff = 0,
+	float  sigCutoff = 0.05,
+	float  hsigCutoff = 0.01,
+	float  similarityCutoffTree = 0.3,
+	float  similarityCutoffTable = 0.3,
+	int    topNrecurrentGenes = 30
+) -> (Latex report)
+{
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tlinkout1\tset1\n$ID$\tlinkout2\tset2")
+
+	reports = record()
+	for ID, comparison : comparisons 
+	{			
+		similarityCutoffTree = 0.3
+
+		// --- up-regulated --------------------------------------------------------------------------------------------------------
+		
+		if (std.exists(similarityCutoffsTree, ID+"Up")) {
+			similarityCutoffTree = similarityCutoffsTree[ID+"Up"]
+		}
+		if (std.exists(sigCutoffs, ID+"Up")) {
+			sigCutoff = sigCutoffs[ID+"Up"]
+		}
+
+		caption = "Similarity among gene sets enriched (FDR equal or lower " + sigCutoff
+		if (nesCutoff > 0) { caption = caption + ", NES equal or higher " + nesCutoff }
+		caption = caption + ") for genes up-regulated in " + comparison.caseG + " compared to " + comparison.controlG + ". " +
+				  "The Jaccard index is used to measure similarity and reflects the amount of core enrichment genes shared between two gene sets. " +
+				  "Clustering performed by average-linkage hierarchical clustering. " +
+				  "Gene sets with limited overlap (Jaccard index below " + similarityCutoffTree + ") were removed from the tree. " +
+				  "Highly enriched gene sets (FDR equal or below " + hsigCutoff + ") colored in red. " +
+				  "Core enrichment genes shared among depicted gene sets are listed in the table below."
+		
+		overlap = GSEAOverlap
+		(
+			enrichedGeneSets = enrichedUp[ID],
+			caption = caption,
+			similarityCutoffTree=similarityCutoffTree,
+			similarityCutoffTable=similarityCutoffTable,
+			regexCategoryNamesExclude="MSIGDB_C4_COMPUTATIONAL",
+			nesCutoff=nesCutoff,
+			sigCutoff=sigCutoff,
+			hsigCutoff=hsigCutoff,
+			topN=topN,
+			sectionTitle = "Overlap dendrogram " + ID + " Up",
+			sectionType  = "subsubsection",
+			@name = "dendrogram" + std.quote(ID, type="Anduril") +"Up"
+		)
+
+		content = REvaluate
+		(
+			table1 = overlap.overlaps,
+			script = overlapTableConvertScript,
+			@name = "content" + std.quote(ID, type="Anduril") +"Up"
+		)
+		
+		table = CSV2Latex
+		(
+			tabledata    = content.table,
+			attach       = false,
+			caption      = "Enriched (FDR equal or lower " + sigCutoff + ") gene sets sharing genes up-regulated in " + comparison.caseG + " compared to " + comparison.controlG + ". " +
+			               "Gene set pairs with limited overlap (Jaccard index below " + similarityCutoffTable + ") not shown.",
+			columns      = "set1,set2,size1,size2,jacc,shared_core_genes",
+			colFormat    = "p{1.5cm}p{1.5cm}cccp{10.5cm}",
+			countRows    = true,
+			dropMissing  = false,
+			listCols     = "",
+			rename       = "set1=Name 1,set2=Name 2,size1=Size 1,size2=Size 2,jacc=Overlap,shared_core_genes=Shared core enrichment genes (rank)",
+			numberFormat = "jacc=#0.00",
+			pageBreak    = false,
+			section      = "Overlap table " + ID + " Up",
+			sectionType  = "subsubsection",
+			skipEmpty    = true,
+			refs         = hyperlinkRule,
+			@name        = "table"+std.quote(ID, type="Anduril")+"Up"
+		)
+		
+		geneFreqContent = TableQuery
+		(
+			table1 = overlap.coreGeneFrequency @require,
+			table2 = expression[ID],
+			table3 = geneNames,
+			query  = '''
+				SELECT DISTINCT table1."gene", table1."rank", table1."freq", table2."fc''' + ID + '''" AS "fc", table2."q''' + ID + '''" AS "qValue", CASEWHEN(table1."freq" > 10, '[Too many, not shown]', "gene_sets(FDR)") AS "gene_sets(FDR)"  
+				FROM table1, table2, table3 
+				WHERE table1."freq" >= 2 AND table1."rank" <= ''' + maxRank + ''' AND
+					  UCASE(table1."gene") = UCASE(table3."Gene") AND
+				      table3."Ensembl" = table2."ids"
+				      ORDER BY table1."freq" DESC
+				      LIMIT ''' + topNrecurrentGenes,
+			@name  = "geneFreqContent_" + std.quote(ID, type="Anduril") +"Up"
+		)
+
+		geneFreqTable = CSV2Latex
+		(
+			tabledata    = geneFreqContent.table,
+			attach       = false,
+			caption      = "Top-" + topNrecurrentGenes + " core enrichment genes most frequently found in gene sets significantly enriched (FDR equal or lower " + sigCutoff + ") for genes up-regulated in " + comparison.caseG + " compared to " + comparison.controlG + ". " +
+			               "To focus on genes with higher differential expression, genes with expression ranks above " + maxRank + " were excluded. ",
+			columns      = "gene,freq,rank,fc,qValue,gene_sets(FDR)",
+			colFormat    = "lccccp{12cm}",
+			numberFormat = "fc=#0.0,qValue=#0.0E00",
+			countRows    = true,
+			dropMissing  = false,
+			listCols     = "",
+			rename       = "gene=Gene,rank=Rank,freq=Freq.,gene_sets(FDR)=Present in gene sets (enrichment FDR)",
+			pageBreak    = false,
+			section      = "Core enrichment genes " + ID + " Up",
+			sectionType  = "subsubsection",
+			skipEmpty    = true,
+			@name        = "geneFreqTable" + std.quote(ID, type="Anduril") +"Up"
+		)
+		
+		reports[ID+"Up"] = LatexCombiner
+		(
+			latex1 = overlap.dendrogram,
+			latex2 = table,
+			latex3 = geneFreqTable,
+			sectionTitle = ID + " UP",
+			sectionType = "subsection",
+			@name = "report" + std.quote(ID, type="Anduril") +"Up"
+		)
+				
+		// --- down-regulated --------------------------------------------------------------------------------------------------------
+
+		if (std.exists(similarityCutoffsTree, ID+"Dn")) {
+			similarityCutoffTree = similarityCutoffsTree[ID+"Dn"]
+		}
+		if (std.exists(sigCutoffs, ID+"Dn")) {
+			sigCutoff = sigCutoffs[ID+"Dn"]
+		}
+
+		overlap = GSEAOverlap
+		(
+			enrichedGeneSets = enrichedDn[ID],
+			caption = "Similarity among gene sets enriched (FDR equal or lower " + sigCutoff + ") for genes down-regulated in " + comparison.caseG + " compared to " + comparison.controlG + ". " +
+					  "The Jaccard index is used to measure similarity and reflects the amount of core enrichment genes shared between two gene sets. " +
+					  "Clustering performed by average-linkage hierarchical clustering. " +
+					  "Gene sets with limited overlap (Jaccard index below " + similarityCutoffTree + ") were removed from the tree. " +
+					  "Highly enriched gene sets (FDR equal or below " + hsigCutoff + ") colored in red. " +
+					  "Core enrichment genes shared among depicted gene sets are listed in the table below.",
+			similarityCutoffTree=similarityCutoffTree,
+			similarityCutoffTable=similarityCutoffTable,
+			regexCategoryNamesExclude="MSIGDB_C4_COMPUTATIONAL",
+			sigCutoff=sigCutoff,
+			hsigCutoff=hsigCutoff,
+			topN=topN,
+			sectionTitle = "Overlap dendrogram " + ID + " Down",
+			sectionType  = "subsubsection",
+			@name = "dendrogram" + std.quote(ID, type="Anduril") +"Dn"
+		)
+
+		content = REvaluate
+		(
+			table1 = overlap.overlaps,
+			script = overlapTableConvertScript,
+			@name = "content" + std.quote(ID, type="Anduril") +"Dn"
+		)
+		
+		table = CSV2Latex
+		(
+			tabledata    = content.table,
+			attach       = false,
+			caption      = "Enriched (FDR equal or lower " + sigCutoff + ") gene sets sharing genes down-regulated in " + comparison.caseG + " compared to " + comparison.controlG + ". " +
+			               "Gene set pairs with limited overlap (Jaccard index below " + similarityCutoffTable + ") not shown.",
+			columns      = "set1,set2,size1,size2,jacc,shared_core_genes",
+			colFormat    = "p{1.5cm}p{1.5cm}cccp{10.5cm}",
+			countRows    = true,
+			dropMissing  = false,
+			listCols     = "",
+			rename       = "set1=Name 1,set2=Name 2,size1=Size 1,size2=Size 2,jacc=Overlap,shared_core_genes=Shared core enrichment genes (rank)",
+			numberFormat = "jacc=#0.00",
+			pageBreak    = false,
+			section      = "Overlap table " + ID + " Down",
+			sectionType  = "subsubsection",
+			skipEmpty    = true,
+			refs         = hyperlinkRule,
+			@name        = "table"+std.quote(ID, type="Anduril")+"Dn"
+		)
+
+		geneFreqContent = TableQuery
+		(
+			table1 = overlap.coreGeneFrequency @require,
+			table2 = expression[ID],
+			table3 = geneNames,
+			query  = '''
+				SELECT DISTINCT table1."gene", table1."rank", table1."freq", table2."fc''' + ID + '''" AS "fc", table2."q''' + ID + '''" AS "qValue", CASEWHEN(table1."freq" > 10, '[Too many, not shown]', "gene_sets(FDR)") AS "gene_sets(FDR)"  
+				FROM table1, table2, table3 
+				WHERE table1."freq" >= 2 AND table1."rank" <= ''' + maxRank + ''' AND
+					  UCASE(table1."gene") = UCASE(table3."Gene") AND
+				      table3."Ensembl" = table2."ids"
+				      ORDER BY table1."freq" DESC
+				      LIMIT ''' + topNrecurrentGenes,
+			@name  = "geneFreqContent_" + std.quote(ID, type="Anduril") +"Dn"
+		)
+
+		geneFreqTable = CSV2Latex
+		(
+			tabledata    = geneFreqContent.table,
+			attach       = false,
+			caption      = "Top-" + topNrecurrentGenes + " core enrichment genes most frequently found in gene sets significantly enriched (FDR equal or lower " + sigCutoff + ") for genes down-regulated in " + comparison.caseG + " compared to " + comparison.controlG + ". " +
+			               "To focus on genes with higher differential expression, genes with expression ranks above " + maxRank + " were excluded. ",
+			columns      = "gene,freq,rank,fc,qValue,gene_sets(FDR)",
+			colFormat    = "lccccp{12cm}",
+			numberFormat = "fc=#0.0,qValue=#0.0E00",
+			countRows    = true,
+			dropMissing  = false,
+			listCols     = "",
+			rename       = "gene=Gene,rank=Rank,freq=Freq.,gene_sets(FDR)=Present in gene sets (enrichment FDR)",
+			pageBreak    = false,
+			section      = "Core enrichment genes " + ID + " Down",
+			sectionType  = "subsubsection",
+			skipEmpty    = true,
+			@name        = "geneFreqTable" + std.quote(ID, type="Anduril") +"Dn"
+		)
+		
+		reports[ID+"Dn"] = LatexCombiner
+		(
+			latex1 = overlap.dendrogram,
+			latex2 = table,
+			latex3 = geneFreqTable,
+			sectionTitle = ID + " DN",
+			sectionType = "subsection",
+			@name = "report" + std.quote(ID, type="Anduril") +"Dn"
+		)
+	}
+	
+	// ---------------------
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "Gene Set Overlap Analysis",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function tableReports
+(
+	TextFile filterScript,
+	TextFile hyperlinkRule,
+	record enrichedUp,
+	record enrichedDn,
+	string title,
+	record reportComparisons,
+	float  nes,
+	float  fdr,
+	string sectionType,
+	int    topNTable,
+	int    minSetSize,
+	int    maxSetSize,
+	boolean includeDescription = false
+) -> (Array<Latex> reports)
+{
+	rep = record()
+	
+	for ID, comparison : reportComparisons 
+	{			
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filterScript, @name = "filtered"+std.quote(ID, type="Anduril")+"Up")
+		caption = ""
+		if (topNTable > 0) { caption = caption + "Top-" + topNTable + " " }
+		caption = caption + title + " enriched for genes up-regulated in " + comparison.caseG + " compared to " + comparison.controlG + " samples."
+		tableUp = latexTable 
+		(
+			tabledata = filteredUp.table,
+			hyperlinkRule = hyperlinkRule, 
+			caption   = caption,
+			minFDR    = fdr,
+			minNES    = nes,
+			minSetSize = minSetSize,
+			maxSetSize = maxSetSize,
+			includeDescription = includeDescription,
+			@name     = "table"+std.quote(ID, type="Anduril")+"Up"
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filterScript, @name = "filtered"+std.quote(ID, type="Anduril")+"Dn")
+		caption = ""
+		if (topNTable > 0) { caption = caption + "Top-" + topNTable + " " }
+		caption = caption + title + " enriched for genes down-regulated in " + comparison.caseG + " compared to " + comparison.controlG + " samples."
+		tableDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
+			caption   = caption,
+			minFDR    = fdr,
+			minNES    = nes,
+			minSetSize = minSetSize,
+			maxSetSize = maxSetSize,
+			includeDescription = includeDescription,
+			@name     = "table"+std.quote(ID, type="Anduril")+"Dn"
+		)
+
+		rep[ID] = LatexCombiner 
+		(
+			latex1 = tableUp, 
+			latex2 = tableDn,
+			sectionTitle = ID,
+			sectionType = sectionType,
+			@name       = "report" + std.quote(ID, type="Anduril")
+		)
+	}
+	
+	return std.makeArray(rep)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+latexTableConvertScript = StringInput(content=
+	'''
+	table.out <- table1
+	table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)			
+	table.out$DESCRIPTION <- gsub('_', ' ', table.out$DESCRIPTION, fixed=T)			
+	table.out$LINKOUT <- gsub('$', '\\$', table.out$LINKOUT, fixed=T)			
+	'''
+)
+
+function latexTable
+(
+	CSV    tabledata,
+	CSV hyperlinkRule,
+	string caption,
+	float  minFDR,
+	float  minNES = 0,
+	boolean includeDescription = false,
+	string sectionTitle = "",
+	string sectionType = "",
+	int    minSetSize,
+	int    maxSetSize
+) -> (Latex report)
+{
+	captionNES = ""
+	if (minNES > 0) {
+		captionNES = "In addition, because there were too many significant hits, a minimum absolute NES of " + minNES + " was required. "
+	}
+
+	// allows Latex to break lines at underscores in column containing gene set names
+	content = REvaluate
+	(
+		table1 = tabledata,
+		script = latexTableConvertScript
+	)
+	
+	if (includeDescription) {
+		columns = "NAME,DESCRIPTION,SIZE,NES,FDR q-val,CORE_GENES"
+		colFormat = "p{1.5cm}p{4cm}crrp{8.5cm}"	
+		rename = "NAME=Gene set,DESCRIPTION=Description,SIZE=Size,FDR q-val=FDR,CORE_GENES=Core enrichment genes (rank)"
+	}
+	else {
+		columns = "NAME,SIZE,NES,FDR q-val,CORE_GENES"
+		colFormat = "p{4.5cm}crrp{9.5cm}"
+		rename = "NAME=Gene set,SIZE=Size,FDR q-val=FDR,CORE_GENES=Core enrichment genes (rank)"
+	}
+
+	latex = CSV2Latex
+	(
+		tabledata    = content.table,
+		attach       = false,
+		caption      = caption + " FDR q-value threshold is " + minFDR + ". " + captionNES + "Gene sets with less than " + minSetSize + " or more than " + maxSetSize + " genes were excluded from analysis. " +
+		               "Table sorted by normalized enrichment score (NES) from most to least enriched. The last column shows genes contributing to the enrichment together with their rank in the expression-sorted input gene list.",
+		columns      = columns,
+		colFormat    = colFormat,
+		countRows    = true,
+		dropMissing  = false,
+		listCols     = "",
+		rename       = rename,
+		numberFormat = "NES=#0.00,FDR q-val=#0.0E00",
+		pageBreak    = false,
+		section      = sectionTitle,
+		sectionType  = sectionType,
+		skipEmpty    = true,
+		refs         = hyperlinkRule
+	)
+	
+	return latex.report
+}
+	
+	

@@ -1,0 +1,105 @@
+function heatmapReportNotEmpty
+(
+  	Matrix exprMatrix,
+  	CSV geneNames,
+	record group,
+	string sectionType,
+	float cexRow,
+	float cexCol
+) -> (Latex report)
+{
+	groupExprG = IDConvert
+	(
+		csv              = exprMatrix,
+		conversionTable  = geneNames,
+		conversionColumn = "Gene",
+		keyColumn        = "",
+		unique           = true
+	)
+	
+	// cannot compute stddev if expression is identical in all samples --> hclust chokes
+	// add tiny amount of variability such that we can plot heatmap
+	groupExprGCorr = REvaluate
+	(
+		table1 = groupExprG,
+		script = StringInput(content=
+			'''
+			matr <- Matrix.read(get.input(cf, 'table1'))
+			matr <- as.data.frame(matr)
+			stdzero <- apply(matr, 1, sd) == 0
+			if (sum(stdzero) > 0) {
+				matr[stdzero,] <- matr[stdzero,] + matrix(runif(sum(stdzero)*length(matr))/1000, nrow=sum(stdzero))
+			}
+			table.out <- as.matrix(matr)
+			'''
+		)
+	)
+	
+	heatmap = HeatMapReport
+	(
+		force matr     = groupExprGCorr.table,
+		caption        = "Heatmap of DEGs between "+group.caseG+" and "+group.controlG+".",
+		cexCol         = cexCol,
+		cexRow         = cexRow,
+		clusterMethod  = "average",
+		distanceMetric = "pcc",
+		drawColnames   = true,
+		drawLegends    = true,
+		drawRownames   = true,
+		marginCol      = 4,
+		marginRow      = 2,
+		plotHeight     = 13,
+		plotWidth      = 11,
+		scale          = "row",
+		sectionTitle   = "Heatmap of genes differentially expressed between "+group.caseG+" and "+group.controlG,
+		sectionType    = sectionType,
+		symKey         = true,
+		width          = 16,
+		colorScheme    = "redblue"
+	)
+
+	return heatmap.report
+}
+
+function getHeatmapReport
+(
+  	Matrix exprMatrix,
+  	CSV geneNames,
+	record group,
+	string sectionType,
+	float cexRow = 0.3,
+	float cexCol = 1
+) -> (Latex report)
+{
+	geneCount = RowCount(exprMatrix, limit1=3)
+	
+	heatmapReport = switch geneCount 
+	{
+		case small = LatexCombiner
+		(
+			tail         = "No heatmap available because not enough significant DEGs.",
+			sectionTitle = "Heatmap of genes differentially expressed between " + group.caseG + " and " + group.controlG,
+			sectionType  = sectionType			
+		)
+		
+		case medium = heatmapReportNotEmpty
+		(
+			exprMatrix  = exprMatrix,
+			geneNames   = geneNames,
+			group       = group,
+			sectionType = sectionType,
+			cexRow      = cexRow,
+			cexCol      = cexCol
+		)
+		
+		case large = StringInput(content="dummy")
+
+		return ExclusiveCombiner
+		(
+			item1A = small.document,  
+			item2A = medium.report
+		)
+	}
+	
+	return heatmapReport.itemA
+}	

@@ -1,0 +1,75 @@
+hyperlinkRule = StringInput(content=
+	"URL\trefCol\tvalueCol\n" +
+	"http://www.ensembl.org/id/$ID$\tids\tids\n" +
+	"http://www.genecards.org/cgi-bin/carddisp.pl?gene=$ID$\tGene\tGene\n"
+)
+
+function getDEGTableReport
+(
+	CSV	degs,
+	CSV degReportRefs,
+	string direction,
+	record comparison,
+	string ID,
+	string section = "",
+	string sectionType = "",
+	string design = ""
+) -> (Latex report)
+{
+	// filter genes based on direction?
+	if (direction == "up") {
+		degsFiltered = CSVFilter(csv=degs, lowBound="fc=0")                        
+	} 
+	else if (direction == "down") {
+		degsFiltered = CSVFilter(csv=degs, highBound="fc=0")                        
+	}
+	else {
+		std.fail("Invalid direction: "+direction)
+	}
+	
+	// define table caption
+
+	if (direction == "up") {
+		caption = "List of genes significantly higher expressed in "+comparison.caseG+" samples compared to "+comparison.controlG+
+				  ' samples, where the $\log_2$ fold-change (fc)$ \geq '+comparison.fcLimit+"$ and the minimum mean expression is above "+comparison.exprLimit+
+				  " in at least one of the two groups. The highest p-value accepted is "+comparison.pLimit+
+				  ". Multiple hypothesis corrected p-values with a limit of "+comparison.qLimit+" are shown as qValues."
+	} 
+	else 
+	{
+		caption = "List of genes significantly lower expressed in "+comparison.caseG+" samples compared to "+comparison.controlG+
+				  ' samples, where the $\log_2$ fold-change (fc)$ \leq -'+comparison.fcLimit+"$ and the minimum mean expression is above "+comparison.exprLimit+
+				  " in at least one of the two groups. The highest p-value accepted is "+comparison.pLimit+
+				  ". Multiple hypothesis corrected p-values with a limit of "+comparison.qLimit+" are shown as qValues."
+	}
+	
+	if (ID == "iAMPspecific") {
+		caption = caption + " Genes with potential differential expression between ER and DS samples (qValue below " + qLimitExclude + ") were excluded."
+	} 
+
+	if (design != "") {
+		caption = caption + " The design formula used for calling DEGs is '" + std.quote(design, type="Latex") + "'."
+	} 
+	
+	caption = caption + " Table sorted by absolute fold-change in descending order."
+
+	degReport = CSV2Latex
+	(
+		tabledata    = degsFiltered,
+		refs         = hyperlinkRule,
+		attach       = false,
+		caption      = caption,
+		columns      = "ids,Gene,fc,q,meanA,meanB,Band,Description",
+		rename       = "ids=Ensembl,q=qValue",
+		colFormat    = "llrrrrcp{7.5cm}",
+		countRows    = true,
+		dropMissing  = false,
+		listCols     = "",
+		numberFormat = "fc=#0.0,q=#0.0E00,meanA=#0.0,meanB=#0.0",
+		pageBreak    = false,
+		section      = section,
+		sectionType  = sectionType
+	)
+	
+	return degReport.report
+}
