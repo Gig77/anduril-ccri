@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>GCBias</name>
+    <version>1.0</version>
+    <doc>GC bias plot produced using the biasPlot() function of the R/bioconductor package EDASeq.</doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>QC</category>
+
+    <launcher type="R">
+        <argument name="file" value="gcbias.r"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="countMatrix" type="Matrix">
+            <doc>Count matrix</doc>
+        </input>
+
+        <input name="annotation" type="CSV">
+            <doc>Feature annotations including a column 'gc' containing the GC content for each feature in percent.</doc>
+        </input>
+
+        <input name="sampleGroups" type="SampleGroupTable">
+            <doc>Assignment of samples to sample groups. Use 'includeGroups' to make sure that every sample is assigned to only one group.</doc>
+        </input>
+
+    </inputs>
+ 
+    <outputs>
+
+		<output name="document" type="Latex">
+			<doc>Latex document with figure.</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="title" type="string" default="GC bias per sample">
+            <doc>
+				Figure title.
+            </doc>
+        </parameter>
+
+        <parameter name="caption" type="string" default="GC content bias per sample. Each line is a different sample and represents the lowess regression of read counts on GC content.">
+            <doc>
+				Figure caption.
+            </doc>
+        </parameter>
+
+        <parameter name="includeGroups" type="string" default="">
+            <doc>
+				Comma-separated list of sample group names as they should appear in the box plots (in that order). If not specified, 
+				all groups specified in 'groups' are plotted in alphabetical order.
+            </doc>
+        </parameter>
+
+        <parameter name="height" type="float" default="7">
+            <doc>
+				Height of figure in inch.
+            </doc>
+        </parameter>
+
+        <parameter name="width" type="float" default="7">
+            <doc>
+				Width of figure in inch.
+            </doc>
+        </parameter>
+
+        <parameter name="ymax" type="float" default="8">
+            <doc>
+				Maximum value of y-axis.
+            </doc>
+        </parameter>
+
+        <parameter name="ymin" type="float" default="0">
+            <doc>
+				Minimum value of y-axis.
+            </doc>
+        </parameter>
+
+		<parameter name="sectionTitle" type="string" default="">
+			<doc>Title of the LaTeX section or an empty string to omit the section.</doc>
+		</parameter>
+
+		<parameter name="sectionType" type="string" default="subsection">
+			<doc>Type of LaTeX section: usually one of section, subsection or subsubsection. No section statement is written if sectionTitle is empty.</doc>
+		</parameter>
+
+    </parameters>
+    
+</component>
+
