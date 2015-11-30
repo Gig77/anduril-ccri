@@ -1,0 +1,73 @@
+function experimentalSetupReport
+(
+	SampleGroupTable sampleGroups,
+	SampleGroupTable comparisons,
+	optional CSV	 samples,
+	string           sampleTableColumns = "",
+	string           sampleTableFormat = ""
+) -> (Latex report)
+{
+	samplesReport = CSV2Latex
+	(
+		tabledata    = samples,
+		columns      = sampleTableColumns,
+		colFormat    = sampleTableFormat,
+		caption      = "List of samples.",
+		countRows    = true,
+		skipEmpty    = true,
+		sectionType  = "subsection",
+		section      = "Samples",
+		evenColor    = "1,1,1",
+		@enabled     = sampleTableColumns != ""
+	)
+
+	sampleGroupsReport = ExperimentSetup
+	(
+		force groups = sampleGroups,
+		definWidth   = 10.0,
+		descWidth    = 6.0,
+		sectionType  = "subsection",
+		sectionTitle = "Sample groups"
+	)
+	
+	comparisonsReport = ExperimentSetup
+	(
+		force groups = comparisons,
+		definWidth   = 7.0,
+		descWidth    = 9.0,
+		sectionType  = "subsection",
+		sectionTitle = "Comparisons between sample groups"
+	)
+	
+	samplesGraph = GraphVisualizer
+	(
+		sampleGroupsReport.graph,
+		reportHeight = 26,
+		reportWidth  = 18,
+		layout       = "spring2",
+		latexTail    = '\newpage{}'
+	)
+	
+	comparisonsGraph = GraphVisualizer
+	(
+		comparisonsReport.graph,
+		reportHeight = 26,
+		reportWidth  = 18,
+		layout       = "spring2",
+		latexTail    = '\newpage{}'
+	)
+
+	combinedReport = LatexCombiner
+	(
+		samplesReport.report,
+		sampleGroupsReport.report,
+		comparisonsReport.report,
+		samplesGraph.figure,
+		comparisonsGraph.figure,
+		sectionTitle = "Experimental setup",
+		sectionType  = "section",
+		pagebreak    = true
+	)
+	
+	return combinedReport
+}
