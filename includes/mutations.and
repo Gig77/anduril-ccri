@@ -1,0 +1,270 @@
+function MutationReport
+(
+	Array<BAM> alignedBams,
+	string sectionTitle = "",
+	string sectionType = ""
+) -> (Latex report)
+{
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\nhttp://www.genecards.org/cgi-bin/carddisp.pl?gene=$ID$\tGene\tGene\n")
+
+	filteredVariants = record()
+	variantTableReports = record()
+	
+	for bam : std.iterArray(alignedBams) 
+	{	
+		sample = bam.key
+	
+		@out.optOut1.filename = sample + '.varscan.vcf'
+		varscan = BashEvaluate
+		(
+			var1       = INPUT(path=bam.file),
+			var2       = referenceGenomeFasta,
+			var3       = gtf,
+			echoStdOut = true,
+			script = '''
+				set -o pipefail
+				set -ex
+				rm -f @optOut1@
+				java -XX:+UseParallelGC -XX:ParallelGCThreads=8 -jar /data_synology/software/varscan-2.3.6/VarScan.v2.3.6.jar mpileup2cns \
+					<(samtools mpileup -q 30 --excl-flags 3844 -l <(zcat @var3@ | grep -P "\tCDS\t" | cut -f 1,4,5 | sort | uniq) -f @var2@ @var1@) \
+					--min-coverage 2 --min-reads2 2 --min-avg-qual 24 --min-var-freq 0.2 --min-freq-for-hom 0.75 --p-value 1 --strand-filter 0 --output-vcf 1 --variants 1 \
+					> @optOut1@.part
+				mv @optOut1@.part @optOut1@
+			''',
+			@name      = "varscan_" + std.strReplace(sample, '-', '_'),
+			@cpu       = 2,
+			@memory    = 1000,
+			@enabled   = runMutations
+		)
+	
+		// SNPs downloaded from: ftp://ftp.ncbi.nih.gov/snp/organisms/human_9606_b144_GRCh37p13/VCF/clinical_vcf_set/common_no_known_medical_impact_20150629.vcf.gz
+		// NOTE: this latest file was not used because sex and mitochondrial chromosomes are missing!
+		@out.optOut1.filename = sample + '.varscan.dbsnp.vcf'
+		dbsnp = BashEvaluate
+		(
+			var1 = varscan.optOut1,
+			echoStdOut = true,
+			script = '''
+				set -o pipefail
+				set -ex
+				rm -f @optOut1@
+				/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java -jar /data_synology/software/snpeff-3.6/SnpSift.jar annotate \
+					-v /mnt/projects/generic/data/ncbi/common_no_known_medical_impact_20140826.vcf \
+					@var1@ \
+					> @optOut1@.part
+				mv @optOut1@.part @optOut1@
+			''',
+			@name      = "dbsnp_" + std.strReplace(sample, '-', '_'),
+			@enabled   = runMutations
+		)
+	
+		@out.optOut1.filename = sample + '.varscan.dbsnp.snpeff.vcf'
+		@out.optOut2.filename = sample + '.snpeff.summary.html'
+		snpeff = BashEvaluate
+		(
+			var1 = dbsnp.optOut1,
+			echoStdOut = true,
+			script = '''
+				set -o pipefail
+				set -ex
+				rm -f @optOut1@
+				/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java -Xmx4g -jar /data_synology/software/snpeff-3.6/snpEff.jar -v -lof -canon GRCh37.75 \
+					-stats @optOut2@ \
+					@var1@ \
+					> @optOut1@.part
+				mv @optOut1@.part @optOut1@
+			''',
+			@name      = "snpeff_" + std.strReplace(sample, '-', '_'),
+			@memory    = 4000,
+			@enabled   = runMutations
+		)
+
+		@out.optOut1.filename = sample + '.varscan.dbsnp.snpeff.dbNSFP.vcf'
+		dbnsfp = BashEvaluate
+		(
+			var1 = snpeff.optOut1,
+			echoStdOut = true,
+			script = '''
+				set -o pipefail
+				set -ex
+				rm -f @optOut1@
+				/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java -jar /data_synology/software/snpeff-3.6/SnpSift.jar dbnsfp \
+					-v /mnt/projects/generic/data/dbNSFP-2.6/dbNSFP2.6_variant.tsv.gz \
+					-collapse \
+					-f SIFT_pred,SIFT_score,Polyphen2_HVAR_pred,Polyphen2_HVAR_score,SiPhy_29way_logOdds,LRT_pred,LRT_score,MutationTaster_pred,MutationTaster_score,MutationAssessor_pred,MutationAssessor_score,FATHMM_pred,FATHMM_score,RadialSVM_pred,RadialSVM_score,GERP++_RS,1000Gp1_AF,1000Gp1_AFR_AF,1000Gp1_EUR_AF,1000Gp1_AMR_AF,1000Gp1_ASN_AF,ESP6500_AA_AF,ESP6500_EA_AF,Uniprot_acc,Interpro_domain, \
+					@var1@ \
+					> @optOut1@.part
+				mv @optOut1@.part @optOut1@
+			''',
+			@name      = "dbnsfp_" + std.strReplace(sample, '-', '_'),
+			@memory    = 4000,
+			@enabled   = runMutations
+		)
+
+		// NOTE: remission variants file created with /mnt/projects/generic/scripts/make-rnaseq-pooled-normal.sh
+		
+		@out.optOut1.filename = sample + '.filtered-variants.tsv'
+		filtered = BashEvaluate
+		(
+			var1 = dbnsfp.optOut1,
+			echoStdOut = true,
+			script = '''
+				set -o pipefail
+				set -ex
+				rm -f @optOut1@
+
+				#	--remission-variants-file /mnt/projects/hdall/results/remission-variants.tsv.gz \
+				perl /mnt/projects/iamp/scripts/filter-variants.pl \
+					--vcf-in @var1@ \
+					--sample ''' + sample + ''' \
+					--header 1 \
+					--rmsk-file /mnt/projects/generic/data/hg19/hg19.rmsk.txt.gz \
+					--simpleRepeat-file /mnt/projects/generic/data/hg19/hg19.simpleRepeat.txt.gz \
+					--segdup-file /mnt/projects/generic/data/hg19/hg19.genomicSuperDups.txt.gz \
+					--blacklist-file /mnt/projects/generic/data/hg19/hg19.wgEncodeDacMapabilityConsensusExcludable.txt.gz \
+					--g1k-accessible /mnt/projects/generic/data/hg19/paired.end.mapping.1000G..pilot.bed.gz \
+					--ucscRetro /mnt/projects/generic/data/hg19/hg19.ucscRetroAli5.txt.gz \
+					--remission-variants-file /mnt/projects/generic/results/rnaseq-controls/execute/rnaseqControlVariants/rnaseq-control-variants.tsv.gz \
+					--cosmic-mutation-file /mnt/projects/generic/data/cosmic/v73/CosmicMutantExport.tsv \
+					--evs-file /mnt/projects/generic/data/evs/ESP6500SI-V2-SSA137.updatedRsIds.chrAll.snps_indels.txt.gz \
+					--exac-file /mnt/projects/generic/data/ExAC/ExAC.r0.2.sites.vep.vcf.gz \
+					--clinvar-file /mnt/projects/generic/data/clinvar/clinvar_20150629.GRCh37.vcf.gz \
+				> @optOut1@.part
+				mv @optOut1@.part @optOut1@
+			''',
+			@name      = "filteredVariants_" + std.strReplace(sample, '-', '_'),
+			@enabled   = runMutations
+		)
+		filteredVariants[sample] = filtered.optOut1
+		
+		variantTable = TableQuery
+		(
+			table1 = filtered.optOut1,
+			query  = 
+				"""
+				SELECT "gene" AS "Gene",
+				       CONCAT("chr", ':', "pos", ':', "ref", '>', "alt") AS "Variant",
+				       "effect" AS "Effect",
+				       "deleterious" AS "Deleterious",
+				       "aa_change" AS "AA change",
+				       "dp_var" AS "# reads",
+				       "qual" AS "Quality",
+				       "freq" AS "AF",
+				       "ClinVar" AS "ClinVar",
+				       CASEWHEN("cosmic_hits_aa" IN ('non-coding', '0'), NULL, CAST("cosmic_hits_aa" AS INT)) AS "# cosmic"
+				FROM table1 
+				WHERE "status" = 'PASS' AND "non_silent" = 1 AND ("deleterious" = 'yes' OR "cosmic_hits_aa" NOT IN ('non-coding', '0') OR LOWER("ClinVar") LIKE '%pathogenic%')
+				ORDER BY "# cosmic" IS NULL ASC, "# cosmic" DESC, "ClinVar" IS NULL ASC, "# reads" DESC, "Quality" DESC
+				""",
+				@name = "variantTable" + std.strReplace(sample, '-', '_')
+		)
+		
+		variantTableReports[sample] = CSV2Latex
+		(
+			tabledata    = variantTable.table,
+			refs         = hyperlinkRule,
+			attach       = false,
+			caption      = "RNA-seq variants detected in sample " + sample + ". Included are non-silent variants that (a) are predicted deleterious, (b) alter the same amino acid as a 'confirmed somatic' variant in the COSMIC database, " +
+			               "or (c) are annotated as 'pathogenic' or 'likely pathogenic' in the ClinVar database. Column 'Variant' shows the induced change at the DNA level (GRCh37 coordinates), column 'Effect' the variant category " +
+			               "as annotated by SnpEff, 'Delet.' whether the variant is predicted deleterious or not, 'AA' the change at the amino acid level, 'Reads' the number of variant-supporting reads, " +
+			               "'Qual.' the average Phred-scaled base quality of variant-supporting bases, 'AF' the allelic frequency of the variant, 'ClinVar' the identifier and pathogenicity annotation for known ClinVar variants, " +
+			               "and 'COSMIC' the number of variants in the COSMIC database impacting the same amino acid. Table sorted in descending order by columns 'COSMIC', 'Reads', and 'Qual.', " +
+			               "meaning that variants rank higher if they have previously been found in cancer, are more highly expressed, and are less likely sequencing errors.",
+			columns      = "Gene,Variant,Effect,Deleterious,AA change,# reads,Quality,AF,ClinVar,# cosmic",
+			colFormat    = "lp{3cm}lcccccp{1.2cm}c",
+			countRows    = true,
+			dropMissing  = false,
+			listCols     = "",
+			numberFormat = "# reads=#0,AF=#0.00,# cosmic=#0",
+			rename       = "Deleterious=Delet.,AA change=AA,# reads=Reads,# cosmic=COSMIC,Quality=Qual.",
+			pageBreak    = false,
+			skipEmpty    = true,
+			section      = sample,
+			sectionType  = "subsection",
+			@name        = "variantTableReport" + std.strReplace(sample, '-', '_')
+		)
+		
+	}
+
+	@out.csv.filename = "filtered-variants.tsv"
+	filteredVariantsCombined = CSVJoin
+	(
+		array   = filteredVariants,
+		useKeys = false
+	)
+	
+	//"sample"	"var_type"	"status"	"rejected_because"	"chr"	"pos"	"ref"	"alt"	"gene"	"add_genes"	"dbSNP"	"AF_1000G"	"AF_EVS"	"AF_ExAC"	
+	//"ClinVar"	"impact"	"effect"	"non_silent"	"deleterious"	"exons"	"dp_tot"	"dp_ref"	"dp_var"	"freq"	"aa_change"	"snpeff_effect"	"Polyphen2"	"SIFT"	
+	//"GERP++"	"SiPhy"	"InterPro"	"cosmic_hits_nt"	"cosmic_hits_aa"	"repeat"	"segdup"	"blacklist"	"g1k-accessible"	"retro"	"rem_samples"
+	
+	@out.table.filename = "variants.cosmic.tsv"
+	variantTableRecurrent = TableQuery
+	(
+		table1 = filteredVariantsCombined.csv,
+		query  = 
+			"""
+			SELECT "gene"                       AS "Gene",
+			       COUNT(DISTINCT "sample")    AS "# samples",
+			       GROUP_CONCAT(DISTINCT "sample" ORDER BY "sample" SEPARATOR ', ') AS "Samples",
+			       GROUP_CONCAT(DISTINCT CONCAT("chr", ':', "pos", ':', "ref", '>', "alt", '(', "samples_nt", ')') ORDER BY "samples_nt" SEPARATOR '; ') AS "DNA change",
+			       GROUP_CONCAT(DISTINCT CONCAT("aa_change", '(', "samples_prot", ')') ORDER BY "samples_prot" SEPARATOR '; ') AS "AA change",
+			       GROUP_CONCAT(DISTINCT NULLIF("ClinVar", '') ORDER BY "ClinVar" SEPARATOR '; ') AS "ClinVar",
+			       CASEWHEN(SUM(CASEWHEN("cosmic_hits_aa" IN ('non-coding', '0'), 0, 1)) > 0, SUM(CASEWHEN("cosmic_hits_aa" IN ('non-coding', '0'), 0, 1)), NULL) AS "COSMIC",
+			       GROUP_CONCAT(DISTINCT NULLIF("InterPro", '') ORDER BY "InterPro" SEPARATOR '; ') AS "Impacted domains"
+			       FROM table1 
+			       	    LEFT JOIN
+			            (SELECT "gene", "aa_change", GROUP_CONCAT(DISTINCT "sample" ORDER BY "sample" SEPARATOR ', ') AS "samples_prot" 
+			                 FROM table1 
+			                 WHERE "status" = 'PASS' AND "non_silent" = 1 AND ("deleterious" = 'yes' OR "cosmic_hits_aa" NOT IN ('non-coding', '0')  OR LOWER("ClinVar") LIKE '%pathogenic%') 
+			                 GROUP BY "gene", "aa_change") AS sub
+			                 ON table1."gene" = sub."gene" AND table1."aa_change" = sub."aa_change"
+			       	    LEFT JOIN
+			            (SELECT "gene", "chr", "pos", "ref", "alt", GROUP_CONCAT(DISTINCT "sample" ORDER BY "sample" SEPARATOR ', ') AS "samples_nt" 
+			                 FROM table1 
+			                 WHERE "status" = 'PASS' AND "non_silent" = 1 AND ("deleterious" = 'yes' OR "cosmic_hits_aa" NOT IN ('non-coding', '0')  OR LOWER("ClinVar") LIKE '%pathogenic%') 
+			                 GROUP BY "gene", "chr", "pos", "ref", "alt") AS sub2
+			                 ON table1."gene" = sub2."gene" AND table1."chr" = sub2."chr" AND table1."pos" = sub2."pos" AND table1."ref" = sub2."ref" AND table1."alt" = sub2."alt"
+			       WHERE "status" = 'PASS' AND "non_silent" = 1 AND ("deleterious" = 'yes' OR "cosmic_hits_aa" NOT IN ('non-coding', '0') OR LOWER("ClinVar") LIKE '%pathogenic%')
+			       GROUP BY "gene"
+			       HAVING COUNT(DISTINCT "sample") > 1
+			       ORDER BY "# samples" DESC, "COSMIC" IS NULL ASC, "COSMIC" DESC, "ClinVar" IS NULL ASC 
+			"""
+	)
+	
+	variantTableReportRecurrent = CSV2Latex
+	(
+		tabledata    = variantTableRecurrent.table,
+		refs         = hyperlinkRule,
+		attach       = false,
+		caption      = "Genes impacted by non-silent variants in two or more RNA-seq samples. Non-silent variants were limited to variants that " +
+		               "(a) are predicted deleterious, (b) annotated as 'pathogenic' or 'likely pathogenic' in ClinVar, or (c) alter the same amino acid as another 'confirmed somatic' variant found in the COSMIC database. " +
+		               "Not shown are known polymorphisms (including common non-pathogenic dbSNP variants and variants present in G1K, EVS or ExAC with population allele frequency above 0.01) and likely sequencing/mapping artifacts " +
+		               "(removed by screening against a pool of normal samples that were prepared, sequenced, and processed with the same protocol). " +
+		               "Columns 'DNA change' and 'AA change' list individual variants at DNA and protein level, respectively, with samples sharing a particular variant shown in parentheses. " +
+		               "Column 'COSMIC' shows how many of the identified variants in this gene alter an amino acid that is known to be somatically mutated in cancer from the COSMIC database. " +
+		               "Genes sorted by sample mutation frequency in descending order. " +
+		               "Note that matched normal filtering was not performed, so some lowly (n=2) recurrent variants in this list could be rare germline instead of somatic.", 
+		columns      = "Gene,# samples,Samples,DNA change,AA change,ClinVar,COSMIC",
+		colFormat    = "lcp{2cm}p{4.5cm}p{2.8cm}p{1.2cm}c",
+		countRows    = true,
+		dropMissing  = false,
+		listCols     = "",
+		numberFormat = "# samples=#0,COSMIC=#0",
+		pageBreak    = false,
+		section      = "Recurrently mutated genes",
+		sectionType  = "subsection"
+	)
+	
+	variantReport = LatexCombiner
+	(
+		array = {
+			variantTableReportRecurrent,
+			variantTableReports
+		},
+		sectionTitle=sectionTitle, 
+		sectionType=sectionType
+	)
+	
+		
+	return variantReport.document
+}
