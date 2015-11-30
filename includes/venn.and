@@ -50,12 +50,21 @@ function VennSetTableReport
 		for ID, comparison : outputComparisons	
 		{ 
 			if (ID > 1) { query = query + '+' }
-			query = query + 'CASEWHEN("' + orderCol + '_' + comparison + '"=0,-300,LOG("q_' + comparison + '"))'
+			if (orderCol == "q") {
+				query = query + 'CASEWHEN("' + orderCol + '_' + comparison + '"=0,-300,LOG("q_' + comparison + '"))'
+			}
+			else {
+				query = query + '"' + orderCol + '_' + comparison + '"'
+			}
 		}
 		query = query + ')/' + std.length(outputComparisons)
 	}
 	else {
-		query = query + ' ORDER BY (CASEWHEN("' + orderCol + '_' + orderBy + '"=0,-300,LOG("q_' + orderBy + '")))'
+		if (orderCol == "q") {
+			query = query + ' ORDER BY (CASEWHEN("' + orderCol + '_' + orderBy + '"=0,-300,LOG("q_' + orderBy + '")))'
+		} else {
+			query = query + ' ORDER BY ("' + orderCol + '_' + orderBy + '")'
+		}
 	}
 		
 	//std.echo(query)	
