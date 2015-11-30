@@ -1,0 +1,148 @@
+refsGOEnrich = XrefLinkRule(moksiskaan = moksiskaanInit.connection, columns = "GOID=Description", xrefTypes  = XrefType_Gene_Ontology)
+
+function getGOEnrichmentReport
+(
+	CSV    geneIds,	
+	CSV    deseq,
+	CSV    geneNames,
+	CSV    geneGO,
+	float  threshold,
+	string ID,
+	string sectionTitle,
+	string sectionType
+) -> (Latex report)
+{
+	// compute GO probabilities for background gene set limited to only expressed genes (i.e. genes for which we have a p-value)
+	goAnnotationsExpressed = TableQuery
+	(
+		tables = record(deseq=deseq, geneGO=geneGO),
+		query  = '''
+			SELECT geneGO.*
+			FROM   geneGO, deseq
+			WHERE  geneGO."xref10" = deseq."ids" AND deseq."q''' + ID + '''" IS NOT NULL
+		'''
+	)
+	
+	enrichmentTableExpressed = GOProbabilityTable(goAnnotation=goAnnotationsExpressed)
+	
+	// get input genes annotated with GO terms
+	goAnnotations = TableQuery
+	(
+		table1 = geneGO    @require,
+		table2 = geneNames @require,
+		table3 = geneIds   @require,
+		query  = """
+					SELECT O.*, A."Gene"
+					FROM   table1 O, table2 A, table3 E
+					WHERE  O."xref10" = A."Ensembl" and O."xref10" = E."ids"
+				 """
+	)
+
+	// perform enrichment
+	goEnrich = GOEnrichment
+	(
+		goAnnotations	       = goAnnotations,
+		enrichmentTable 	   = enrichmentTableExpressed.enrichmentTable,
+		colorMinP              = 0,
+		filterFDR              = true,
+		includeGraphAttributes = true,
+		threshold              = threshold
+	)
+
+	// convert Ensembl IDs to HGNC gene names, color by fold-change (up or down)	
+	goExpand = ExpandCollapse
+	(
+		goEnrich.goTerms, 
+		listCols="IDs", 
+		duplicates=true, 
+		@keep=false
+	)
+	
+	goTable = TableQuery
+	(
+		table1 = goExpand 	@require, 
+		table2 = geneNames  @require,
+		table3 = geneIds    @require,
+		query = 
+			'''
+			SELECT T1."GOID", 
+				   T1."Priori"          AS "pBG",
+				   T1."Proportion"      AS "pDEG", 
+				   T1."PValueCorrected" AS "pAdj", 
+				   T1."Ontology", 
+				   T1."Description", 
+				   GROUP_CONCAT('\textcolor' || CASEWHEN(T3."fc">0, '{red}{', '{blue}{') || IFNULL(T2."Gene", T1."IDs") || '}' SEPARATOR ',') AS "Genes"
+			FROM   table1 AS T1, table2 AS T2, table3 as T3
+			WHERE  (T1."IDs" = T2."Ensembl" and T1."IDs" = T3."ids")
+			GROUP  BY T1."GOID", T1."Priori", T1."Proportion", T1."Ontology", T1."Description", T1."PValueCorrected"
+			ORDER  BY T1."PValueCorrected", T1."Description"
+			'''
+	)
+	
+	goTableReport = CSV2Latex
+	(
+		goTable, 
+		refsGOEnrich,
+		caption      = "Enriched gene ontology (GO) terms~\\cite{Ashburner2000} (FDR corrected $p\\le"+threshold+"$) comparing " + std.quote(ID, type="Latex") + ". "+
+					   "'pBG' and 'pDEG' is the fraction of genes annotated with that GO term among all expressed genes and differentially expressed genes, respectively. "+
+					   "List sorted by FDR corrected p-values. "+
+					   "Red and blue colors refer to \\textcolor{red}{up}- and \\textcolor{blue}{down}-regulated genes, respectively.",
+		columns      = "pBG,pDEG,pAdj,Ontology,Description,Genes",
+		rename       = "Ontology=Type",
+		listCols     = "Genes",
+		colFormat    = "ccccp{3.5cm}p{9.5cm}",
+		numberFormat = "pBG=#0.00,pDEG=#0.00,pAdj=#0.0E00,Genes=RAW_LATEX",
+		countRows    = true,
+		skipEmpty    = true
+	)
+	
+	metadata = std.metadata()
+	goCaptionPrefix  = "Relationships between enriched \\textit{"
+	goCaptionSuffix = "} GO terms that were listed in Table~\\ref{table:" + metadata.instanceName +
+	                  "-goTableReport}. Darkness of red reflects significance of enrichment and " +
+					  "edge thickness is proportional to the numbers of genes sharing the following annotation."
+					  
+	goGraphMF = GraphVisualizer
+	(
+		graph          = goEnrich.graphMF,
+		titleAttribute = "",
+		layout         = "hierarchical",
+		reportWidth    = 18,
+		minSize        = 2,
+		reportCaption  = goCaptionPrefix + "molecular function" + goCaptionSuffix
+	)
+	
+	goGraphBP = GraphVisualizer
+	(
+		graph          = goEnrich.graphBP,
+		titleAttribute = "",
+		layout         = "spring2",
+		reportWidth    = 18,
+		minSize        = 2,
+		reportHeight   = 23,
+		reportCaption  = goCaptionPrefix + "biological process" + goCaptionSuffix
+	)
+  	
+	goGraphCC = GraphVisualizer
+	(
+		graph          = goEnrich.graphCC,
+		titleAttribute = "",
+		layout         = "hierarchical",
+		reportWidth    = 18,
+		minSize        = 2,
+		reportCaption  = goCaptionPrefix + "cellular component" + goCaptionSuffix
+	)
+	
+  	goReport = LatexCombiner
+  	(
+  		goGraphMF, 
+  		goGraphBP, 
+  		goGraphCC, 
+  		goTableReport,
+		sectionType  = sectionType,
+		sectionTitle = sectionTitle,  		 
+  		pagebreak=true
+  	)
+	
+	return goReport
+}
