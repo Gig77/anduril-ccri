@@ -98,8 +98,7 @@ function getHeatmapReport
 		auxiliary      = degCalled @require,
 		//includeColumns = comparison.sampleIdLst,    // uncomment to see only samples of the two compared groups
 		//includeColumns = "RowName",                 // uncomment to see only samples of the two compared groups
-		colOrder       = true,
-		@name          = "exprMatrixFiltered_" + std.quote(ID, type="Anduril")
+		colOrder       = true
 	)                      
 
 	geneCount = RowCount(exprMatrixFiltered, limit1=3)
