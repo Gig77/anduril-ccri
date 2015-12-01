@@ -32,7 +32,7 @@ if [ -n "$SECTION_TYPE" ]; then
 fi
 
 if [ -n "$SECTION_TITLE" ]; then
-	echo "$SECTION_TYPE{$SECTION_TITLE}" | sed 's/\\\\/\\/' >> ${output_document}/document.tex
+	echo "$SECTION_TYPE{$SECTION_TITLE}" | sed 's/\\\\/\\/g' >> ${output_document}/document.tex
 fi
 
 # perform enrichment (if input file is not empty)
@@ -58,7 +58,7 @@ if [ -s "${TMPDIR}/query.txt" ]; then
 	echo '\begin{center}' >> ${output_document}/document.tex
 	echo '\includegraphics{'$(basename $PDF)'}' >> ${output_document}/document.tex
 	echo '\end{center}' >> ${output_document}/document.tex
-	echo "\caption{${CAPTION}}" | sed 's/\\\\/\\/' >> ${output_document}/document.tex
+	echo "\caption{${CAPTION}}" | sed 's/\\\\/\\/g' >> ${output_document}/document.tex
 	echo '\end{figure}' >> ${output_document}/document.tex
 else
 	echo 'No DEGs found.' >>  ${output_document}/document.tex
