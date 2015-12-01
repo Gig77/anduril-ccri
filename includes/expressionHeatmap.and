@@ -2,7 +2,8 @@ function heatmapReportNotEmpty
 (
   	Matrix exprMatrix,
   	CSV geneNames,
-	record group,
+  	CSV sampleGroups,
+	record comparison,
 	string sectionType,
 	float cexRow,
 	float cexCol
@@ -35,27 +36,44 @@ function heatmapReportNotEmpty
 		)
 	)
 	
+	sample2group = REvaluate
+	(
+		table1 = sampleGroups,
+		table2 = exprMatrix,
+		param1 = comparison.caseG + "," + comparison.controlG + "," + comparison.otherG,
+		script = StringInput(content=
+			"""
+			groups=unlist(strsplit(param1, ","))
+			table.out <- table1[table1$ID %in% groups, c("ID", "Members")]
+			splitted <- strsplit(as.character(table.out$Members), ",")
+			table.out <- data.frame(Sample=unlist(splitted), Grp=rep.int(table.out$ID, sapply(splitted, length)))
+			unassigned <- colnames(table2[,-1])[!colnames(table2[,-1]) %in% table.out$Sample] 			    
+			table.out <- rbind(table.out, data.frame(Sample=unassigned, Grp=rep.int("other", length(unassigned)))) # blank column name b/c of ugly label overlap in pheatmap
+			""")
+	)
+	
 	heatmap = HeatMapReport
 	(
 		force matr     = groupExprGCorr.table,
-		caption        = "Heatmap of DEGs between "+group.caseG+" and "+group.controlG+".",
-		cexCol         = cexCol,
-		cexRow         = cexRow,
+		colLabels      = sample2group.table,
+		caption        = "Heatmap of DEGs between "+comparison.caseG+" and "+comparison.controlG+".",
 		clusterMethod  = "average",
-		distanceMetric = "pcc",
+		distanceMetric = "correlation,euclidean",
 		drawColnames   = true,
-		drawLegends    = true,
+		drawLegends    = false,
 		drawRownames   = true,
 		marginCol      = 4,
 		marginRow      = 2,
 		plotHeight     = 13,
 		plotWidth      = 11,
 		scale          = "row",
-		sectionTitle   = "Heatmap of genes differentially expressed between "+group.caseG+" and "+group.controlG,
+		fontSizeCol    = 5,
+		fontSizeRow    = 3,
+		sectionTitle   = "Heatmap of genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG,
 		sectionType    = sectionType,
-		symKey         = true,
 		width          = 16,
-		colorScheme    = "redblue"
+		colorScheme    = 'colorRampPalette(c("blue","white","red"))(255)',
+		custom         = "border_color=NA,treeheight_row=150,treeheight_col=100,annotation_legend=T"
 	)
 
 	return heatmap.report
@@ -64,32 +82,45 @@ function heatmapReportNotEmpty
 function getHeatmapReport
 (
   	Matrix exprMatrix,
+  	CSV degCalled,
   	CSV geneNames,
-	record group,
+  	CSV sampleGroups,
+	record comparison,
 	string sectionType,
 	float cexRow = 0.3,
 	float cexCol = 1
 ) -> (Latex report)
 {
-	geneCount = RowCount(exprMatrix, limit1=3)
+	exprMatrixFiltered = CSVFilter
+	(
+		csv            = exprMatrix @require,
+		auxiliary      = degCalled @require,
+		//includeColumns = comparison.sampleIdLst,    // uncomment to see only samples of the two compared groups
+		//includeColumns = "RowName",                 // uncomment to see only samples of the two compared groups
+		colOrder       = true,
+		@name          = "exprMatrixFiltered_" + std.quote(ID, type="Anduril")
+	)                      
+
+	geneCount = RowCount(exprMatrixFiltered, limit1=3)
 	
 	heatmapReport = switch geneCount 
 	{
 		case small = LatexCombiner
 		(
 			tail         = "No heatmap available because not enough significant DEGs.",
-			sectionTitle = "Heatmap of genes differentially expressed between " + group.caseG + " and " + group.controlG,
+			sectionTitle = "Heatmap of genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG,
 			sectionType  = sectionType			
 		)
 		
 		case medium = heatmapReportNotEmpty
 		(
-			exprMatrix  = exprMatrix,
-			geneNames   = geneNames,
-			group       = group,
-			sectionType = sectionType,
-			cexRow      = cexRow,
-			cexCol      = cexCol
+			exprMatrix   = exprMatrixFiltered,
+			geneNames    = geneNames,
+			sampleGroups = sampleGroups,
+			comparison   = comparison,
+			sectionType  = sectionType,
+			cexRow       = cexRow,
+			cexCol       = cexCol
 		)
 		
 		case large = StringInput(content="dummy")
