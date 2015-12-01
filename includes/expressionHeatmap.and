@@ -49,6 +49,7 @@ function heatmapReportNotEmpty
 			table.out <- data.frame(Sample=unlist(splitted), Grp=rep.int(table.out$ID, sapply(splitted, length)))
 			unassigned <- colnames(table2[,-1])[!colnames(table2[,-1]) %in% table.out$Sample] 			    
 			table.out <- rbind(table.out, data.frame(Sample=unassigned, Grp=rep.int("other", length(unassigned)))) # blank column name b/c of ugly label overlap in pheatmap
+			table.out <- table.out[!duplicated(table.out$Sample),]
 			""")
 	)
 	
