@@ -23,6 +23,7 @@ execute <- function(cf) {
 	minReplicatesForReplace <- get.parameter(cf, "minReplicatesForReplace", type = 'int')
 	design       <- get.parameter(cf, 'design',          type = 'string')
 	cooksCutoff  <- get.parameter(cf, 'cooksCutoff',     type = 'float')
+	trim  <- get.parameter(cf, 'trim',     type = 'float')
 	
 	stopifnot(controlGroup %in% sampleGroups$ID)
 	stopifnot(caseGroup %in% sampleGroups$ID)
@@ -91,7 +92,7 @@ execute <- function(cf) {
   
   if (minReplicatesForReplace > 0) {
     print(paste0("Replacing outliers and re-fitting model: minReplicatesForReplace=", minReplicatesForReplace, ", cooksCutoff=", cooksCutoff))
-    dds <- replaceOutliers(dds, cooksCutoff = cooksCutoff, minReplicates = minReplicatesForReplace)
+    dds <- replaceOutliers(dds, trim = trim, cooksCutoff = cooksCutoff, minReplicates = minReplicatesForReplace)
     dds <- nbinomWaldTest(dds)
   }
   
