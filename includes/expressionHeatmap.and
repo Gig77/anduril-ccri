@@ -5,8 +5,8 @@ function heatmapReportNotEmpty
   	CSV sampleGroups,
 	record comparison,
 	string sectionType,
-	float cexRow,
-	float cexCol
+	float fontSizeRow,
+	float fontSizeCol
 ) -> (Latex report)
 {
 	groupExprG = IDConvert
@@ -68,8 +68,8 @@ function heatmapReportNotEmpty
 		plotHeight     = 13,
 		plotWidth      = 11,
 		scale          = "row",
-		fontSizeCol    = 5,
-		fontSizeRow    = 3,
+		fontSizeCol    = fontSizeCol,
+		fontSizeRow    = fontSizeRow,
 		sectionTitle   = "Heatmap of genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG,
 		sectionType    = sectionType,
 		width          = 16,
@@ -88,8 +88,8 @@ function getHeatmapReport
   	CSV sampleGroups,
 	record comparison,
 	string sectionType,
-	float cexRow = 0.3,
-	float cexCol = 1
+	float fontSizeRow = 3,
+	float fontSizeCol = 5
 ) -> (Latex report)
 {
 	exprMatrixFiltered = CSVFilter
@@ -119,8 +119,8 @@ function getHeatmapReport
 			sampleGroups = sampleGroups,
 			comparison   = comparison,
 			sectionType  = sectionType,
-			cexRow       = cexRow,
-			cexCol       = cexCol
+			fontSizeRow  = fontSizeRow,
+			fontSizeCol  = fontSizeCol
 		)
 		
 		case large = StringInput(content="dummy")
