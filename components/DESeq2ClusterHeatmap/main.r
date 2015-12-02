@@ -3,7 +3,7 @@ library(componentSkeleton)
 execute <- function(cf) {
 
 	# enable for debugging
-	#cf <- parse.command.file("/mnt/projects/martin/results/anduril/execute/qcReport-samplesClusterHeatmap/_command")
+	# rm(list=ls()) ; cf <- parse.command.file("/mnt/projects/fikret/results/anduril/execute/qcReport-samplesClusterHeatmap/_command")
 	
 	# Meta data
 	instance.name <- get.metadata(cf, 'instanceName')	
@@ -20,10 +20,12 @@ execute <- function(cf) {
 	do.rlog <- get.parameter(cf, 'rlog', type = 'boolean')
 	do.vst <- get.parameter(cf, 'vst', type = 'boolean')
 	do.voom <- get.parameter(cf, 'voom', type = 'boolean')
+	annotations <- get.parameter(cf, 'annotations', type = 'string')
 			
 	library("DESeq2")
 	library("RColorBrewer")
 	library("gplots")
+	library("heatmap3")
 	
 	rownames(samples) <- samples$Alias
 	samples <- samples[samples$Alias %in% colnames(countMatrix),]
@@ -31,10 +33,48 @@ execute <- function(cf) {
 	cds <- DESeqDataSetFromMatrix(countData = countMatrix, colData = samples, design = ~1)	
 	expressed <- rowSums(counts(cds)) >= 10
 	caption <- paste(caption, "The clustering is based on", sum(expressed), "expressed genes.", sum(!expressed), "genes were excluded because they had less than ten reads in total across all samples.")
-	hmcol <- colorRampPalette(brewer.pal(10, "RdBu"))(256)
 
 	report.dir <- get.output(cf, 'report')
 	dir.create(report.dir, recursive=TRUE)
+	
+	plotHeatmap <- function(matr, samples, annotations, cexRow) {
+	  hmcol <- colorRampPalette(brewer.pal(10, "RdBu"))(256)
+	  noLegend <- function() showLegend(legend=c(""), col="white")
+	  
+	  # setup annotation colors drawn on top of heatmap
+	  if (annotations != "") {
+	    annotations <- unlist(strsplit(annotations, ","))
+	    ann.factors <- list()
+	    ann.colors <- NULL
+	    for(a in annotations) {
+	      ann.cur <- as.character(samples[,a])
+	      ann.cur[is.na(ann.cur) | ann.cur == ""] <- "n/a"
+	      v <- factor(ann.cur, levels=c(unique(ann.cur)[unique(ann.cur) != "n/a"], "n/a"))
+	      if (is.null(ann.colors)) {
+	        ann.colors <- cbind(rainbow(length(levels(v)))[v])
+	      } else {
+	        ann.colors <- cbind(ann.colors, rainbow(length(levels(v)))[v]) 
+	      }
+	      ann.factors[[a]] <- v
+	    }
+	    dimnames(ann.colors)[[2]] <- annotations
+	    
+	    # draw heatmap including annotations
+	    heatmap3(dists.vst, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", ColSideColors = ann.colors, legendfun = noLegend)
+	    
+	    # draw legends into right margin
+	    par(xpd=TRUE)
+	    y = 0.85
+	    for (a in names(ann.factors)) {
+	      v <- levels(ann.factors[[a]])
+	      legend(0.97, y, v, fill=rainbow(length(v))[1:length(v)], cex=0.5, title=a, bty="n", xjust=0, title.adj=0)
+	      y = y - 0.027 * length(v) - 0.05
+	    }
+	  } else {
+	    # draw heatmap without annotations on top
+	    heatmap3(dists.vst, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", legendfun = noLegend)
+	  }
+	}
 	
 	# rlog
 	if (do.rlog) {
@@ -45,7 +85,7 @@ execute <- function(cf) {
 		
 		plot.file.rld <- sprintf('%s-heatmap-rlog.pdf', instance.name)
 		pdf(file.path(report.dir, plot.file.rld))
-		heatmap.2(dists.rld, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=cexRow, cexCol=cexRow, key.title="")
+		plotHeatmap(matr=dists.rld, samples=samples, annotations=annotations, cexRow=cexRow)
 		dev.off()
 	} else {
 	  file.create(get.output(cf, 'rlog'))
@@ -59,7 +99,7 @@ execute <- function(cf) {
 		
 		plot.file.vst <- sprintf('%s-heatmap-vst.pdf', instance.name)
 		pdf(file.path(report.dir, plot.file.vst))
-		heatmap.2(dists.vst, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=cexRow, cexCol=cexRow, key.title="")
+		plotHeatmap(matr=dists.vst, samples=samples, annotations=annotations, cexRow=cexRow)
 		dev.off()
 	} else {
 	  file.create(get.output(cf, 'vst'))
@@ -77,7 +117,7 @@ execute <- function(cf) {
 		
 		plot.file.voom <- sprintf('%s-heatmap-voom.pdf', instance.name)
 		pdf(file.path(report.dir, plot.file.voom))
-		heatmap.2(dists.voom, trace="none", scale="none", col=rev(hmcol), margin=c(7, 7), cexRow=cexRow, cexCol=cexRow, key.title="")
+		plotHeatmap(matr=dists.voom, samples=samples, annotations=annotations, cexRow=cexRow)
 		dev.off()
 	} else {
 	  file.create(get.output(cf, 'voom'))

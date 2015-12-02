@@ -68,6 +68,13 @@
             </doc>
         </parameter>
 
+        <parameter name="annotations" type="string" default="">
+            <doc>
+				Comma-separated list of column names in input 'samples' that should be used to color-code samples on top of heatmap. Only columns containing categorial data allowed.
+				Default is to not use any annotations. 
+            </doc>
+        </parameter>
+
         <parameter name="rlog" type="boolean" default="false">
             <doc>
 				If true, cluster heatmap based on regularized log (rlog) transformation is included in report. 
@@ -85,6 +92,7 @@
 				If true, cluster heatmap based on voom (edgeR) transformed data is included in report. 
             </doc>
         </parameter>
+        
 
     </parameters>
 </component>

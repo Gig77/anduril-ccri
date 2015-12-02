@@ -81,7 +81,8 @@ function getQCReport
 	float				gcBiasYMin = -1,
 	string              batch1 = "",
 	string				covariate1 = "",
-	boolean             includeFastQC = false
+	boolean             includeFastQC = false,
+	string              sampleAnnotationColumns = ""
 ) -> (Latex report, Matrix transformedMatrix)
 {
 	qcReports = record()
@@ -260,7 +261,8 @@ function getQCReport
 		rlog         = false,
 		vst          = true,
 		voom         = false,
-		cexRow       = cexClusterHeatmap
+		cexRow       = cexClusterHeatmap,
+		annotations  = sampleAnnotationColumns
 	)
 	
     mds = MDSPlot
