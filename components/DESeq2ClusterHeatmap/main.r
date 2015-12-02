@@ -49,7 +49,9 @@ execute <- function(cf) {
 	    for(a in annotations) {
 	      ann.cur <- as.character(samples[,a])
 	      ann.cur[is.na(ann.cur) | ann.cur == ""] <- "n/a"
-	      v <- factor(ann.cur, levels=c(unique(ann.cur)[unique(ann.cur) != "n/a"], "n/a"))
+	      levels <- unique(ann.cur)[unique(ann.cur) != "n/a"]
+	      if(sum(ann.cur == "n/a") > 0) levels <- c(levels, "n/a")
+	      v <- factor(ann.cur, levels=levels)
 	      if (is.null(ann.colors)) {
 	        ann.colors <- cbind(rainbow(length(levels(v)))[v])
 	      } else {
