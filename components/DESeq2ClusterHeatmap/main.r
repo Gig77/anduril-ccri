@@ -22,6 +22,7 @@ execute <- function(cf) {
 	do.voom <- get.parameter(cf, 'voom', type = 'boolean')
 	annotations <- get.parameter(cf, 'annotations', type = 'string')
 	legendYOffset <- get.parameter(cf, 'legendYOffset', type = 'float')
+	legendXOffset <- get.parameter(cf, 'legendXOffset', type = 'float')
 	margins <- get.parameter(cf, 'margins', type = 'string')
 			
 	library("DESeq2")
@@ -45,38 +46,41 @@ execute <- function(cf) {
 	  
 	  # setup annotation colors drawn on top of heatmap
 	  if (annotations != "") {
+	    set.seed(4711)
 	    annotations <- unlist(strsplit(annotations, ","))
 	    ann.factors <- list()
+	    ann.palettes <- list()
 	    ann.colors <- NULL
 	    for(a in annotations) {
 	      ann.cur <- as.character(samples[,a])
 	      ann.cur[is.na(ann.cur) | ann.cur == ""] <- "n/a"
 	      levels <- unique(ann.cur)[unique(ann.cur) != "n/a"]
+	      ann.palettes[[a]] <- sample(grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert=T)], length(levels))
 	      if(sum(ann.cur == "n/a") > 0) levels <- c(levels, "n/a")
 	      v <- factor(ann.cur, levels=levels)
 	      if (is.null(ann.colors)) {
-	        ann.colors <- cbind(rainbow(length(levels(v)))[v])
+	        ann.colors <- cbind(ann.palettes[[a]][v])
 	      } else {
-	        ann.colors <- cbind(ann.colors, rainbow(length(levels(v)))[v]) 
+	        ann.colors <- cbind(ann.colors, ann.palettes[[a]][v]) 
 	      }
 	      ann.factors[[a]] <- v
 	    }
 	    dimnames(ann.colors)[[2]] <- annotations
 	    
 	    # draw heatmap including annotations
-	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=unlist(strsplit(margins, ",")), ColSideColors = ann.colors, legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=as.numeric(unlist(strsplit(margins, ","))), ColSideColors = ann.colors, legendfun = noLegend)
 	    
 	    # draw legends into right margin
-	    par(xpd=TRUE)
+	    twidth <- max(strwidth(names(ann.factors))) # to have equally sized legends and thus left-aligned boxes
 	    y = 1-legendYOffset
 	    for (a in names(ann.factors)) {
 	      v <- levels(ann.factors[[a]])
-	      legend(1, y, v, fill=rainbow(length(v))[1:length(v)], cex=0.5, title=a, bty="n", xjust=1, title.adj=0, adj=0)
-	      y = y - 0.027 * length(v) - 0.05
+	      x <- legend(1-legendXOffset, y, v, fill=ann.palettes[[a]], bty="n", cex=0.5, title=a, xjust = 0, title.adj = 0, text.width=twidth, y.intersp = 0.8, xpd=TRUE)
+	      y = y - 0.027 * length(v) - 0.02
 	    }
 	  } else {
 	    # draw heatmap without annotations on top
-	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=unlist(strsplit(margins, ",")), legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=as.numeric(unlist(strsplit(margins, ","))), legendfun = noLegend)
 	  }
 	}
 	

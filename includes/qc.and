@@ -82,7 +82,10 @@ function getQCReport
 	string              batch1 = "",
 	string				covariate1 = "",
 	boolean             includeFastQC = false,
-	string              sampleAnnotationColumns = ""
+	string              sampleAnnotationColumns = "",
+	float               clusterHeatmapLegendYOffset = 0.15,
+	float               clusterHeatmapLegendXOffset = 0,
+	string              clusterHeatmapMargins = "5,5"
 ) -> (Latex report, Matrix transformedMatrix)
 {
 	qcReports = record()
@@ -262,7 +265,10 @@ function getQCReport
 		vst          = true,
 		voom         = false,
 		cexRow       = cexClusterHeatmap,
-		annotations  = sampleAnnotationColumns
+		annotations  = sampleAnnotationColumns,
+		legendYOffset = clusterHeatmapLegendYOffset,
+		legendXOffset = clusterHeatmapLegendXOffset,
+		margins       = clusterHeatmapMargins
 	)
 	
     mds = MDSPlot

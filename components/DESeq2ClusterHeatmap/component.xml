@@ -93,13 +93,17 @@
             </doc>
         </parameter>
 
-		<parameter name="legendYOffset" type="float" default="0.15">
-			<doc>Relative offset of legend (value between 0 and 1) from top of the plot. Increase this value if legends plots into sample annotation labels.</doc>
-		</parameter>
-        
 		<parameter name="margins" type="string" default="5,5">
 			<doc>Column (bottom) and row (right) margins. Increase second value if legend plots into row labels.</doc>
 		</parameter>
 
+		<parameter name="legendXOffset" type="float" default="0">
+			<doc>Relative offset of legend (value between 0 and 1) from right side of the plot. Increase this value if legends plots too far to the right after increasing margin.</doc>
+		</parameter>
+
+		<parameter name="legendYOffset" type="float" default="0.15">
+			<doc>Relative offset of legend (value between 0 and 1) from top of the plot. Increase this value if legends plots into sample annotation labels.</doc>
+		</parameter>
+        
     </parameters>
 </component>
