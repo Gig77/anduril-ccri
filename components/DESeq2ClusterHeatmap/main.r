@@ -62,7 +62,7 @@ execute <- function(cf) {
 	    dimnames(ann.colors)[[2]] <- annotations
 	    
 	    # draw heatmap including annotations
-	    heatmap3(dists.vst, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", ColSideColors = ann.colors, legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", ColSideColors = ann.colors, legendfun = noLegend)
 	    
 	    # draw legends into right margin
 	    par(xpd=TRUE)
@@ -74,7 +74,7 @@ execute <- function(cf) {
 	    }
 	  } else {
 	    # draw heatmap without annotations on top
-	    heatmap3(dists.vst, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", legendfun = noLegend)
 	  }
 	}
 	
