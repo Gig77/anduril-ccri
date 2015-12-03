@@ -21,6 +21,8 @@ execute <- function(cf) {
 	do.vst <- get.parameter(cf, 'vst', type = 'boolean')
 	do.voom <- get.parameter(cf, 'voom', type = 'boolean')
 	annotations <- get.parameter(cf, 'annotations', type = 'string')
+	legendYOffset <- get.parameter(cf, 'legendYOffset', type = 'float')
+	margins <- get.parameter(cf, 'margins', type = 'string')
 			
 	library("DESeq2")
 	library("RColorBrewer")
@@ -62,19 +64,19 @@ execute <- function(cf) {
 	    dimnames(ann.colors)[[2]] <- annotations
 	    
 	    # draw heatmap including annotations
-	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", ColSideColors = ann.colors, legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=unlist(strsplit(margins, ",")), ColSideColors = ann.colors, legendfun = noLegend)
 	    
 	    # draw legends into right margin
 	    par(xpd=TRUE)
-	    y = 0.85
+	    y = 1-legendYOffset
 	    for (a in names(ann.factors)) {
 	      v <- levels(ann.factors[[a]])
-	      legend(0.97, y, v, fill=rainbow(length(v))[1:length(v)], cex=0.5, title=a, bty="n", xjust=0, title.adj=0)
+	      legend(1, y, v, fill=rainbow(length(v))[1:length(v)], cex=0.5, title=a, bty="n", xjust=1, title.adj=0, adj=0)
 	      y = y - 0.027 * length(v) - 0.05
 	    }
 	  } else {
 	    # draw heatmap without annotations on top
-	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=unlist(strsplit(margins, ",")), legendfun = noLegend)
 	  }
 	}
 	

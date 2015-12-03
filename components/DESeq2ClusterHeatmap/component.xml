@@ -92,7 +92,14 @@
 				If true, cluster heatmap based on voom (edgeR) transformed data is included in report. 
             </doc>
         </parameter>
+
+		<parameter name="legendYOffset" type="float" default="0.15">
+			<doc>Relative offset of legend (value between 0 and 1) from top of the plot. Increase this value if legends plots into sample annotation labels.</doc>
+		</parameter>
         
+		<parameter name="margins" type="string" default="5,5">
+			<doc>Column (bottom) and row (right) margins. Increase second value if legend plots into row labels.</doc>
+		</parameter>
 
     </parameters>
 </component>
