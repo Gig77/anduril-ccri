@@ -4,7 +4,8 @@ function experimentalSetupReport
 	SampleGroupTable comparisons,
 	optional CSV	 samples,
 	string           sampleTableColumns = "",
-	string           sampleTableFormat = ""
+	string           sampleTableFormat = "",
+	string           fontsize = ""             // tiny, scriptsize, footnotesize, small, normalsize, large
 ) -> (Latex report)
 {
 	samplesReport = CSV2Latex
@@ -23,20 +24,25 @@ function experimentalSetupReport
 
 	sampleGroupsReport = ExperimentSetup
 	(
-		force groups = sampleGroups,
-		definWidth   = 10.0,
-		descWidth    = 6.0,
-		sectionType  = "subsection",
-		sectionTitle = "Sample groups"
+		force groups          = sampleGroups,
+		definWidth            = 9.0,
+		descWidth             = 6.0,
+		longTable             = true,
+		fontsize              = fontsize,
+		includeDefinitionType = false,
+		sectionType           = "subsection",
+		sectionTitle          = "Sample groups"
 	)
 	
 	comparisonsReport = ExperimentSetup
 	(
-		force groups = comparisons,
-		definWidth   = 7.0,
-		descWidth    = 9.0,
-		sectionType  = "subsection",
-		sectionTitle = "Comparisons between sample groups"
+		force groups          = comparisons,
+		definWidth            = 5.0,
+		descWidth             = 10.0,
+		longTable             = true,
+		fontsize              = fontsize,
+		sectionType           = "subsection",
+		sectionTitle          = "Comparisons between sample groups"
 	)
 	
 	samplesGraph = GraphVisualizer
