@@ -46,7 +46,6 @@ execute <- function(cf) {
 	  
 	  # setup annotation colors drawn on top of heatmap
 	  if (annotations != "") {
-	    set.seed(4711)
 	    annotations <- unlist(strsplit(annotations, ","))
 	    ann.factors <- list()
 	    ann.palettes <- list()
@@ -55,9 +54,19 @@ execute <- function(cf) {
 	      ann.cur <- as.character(samples[,a])
 	      ann.cur[is.na(ann.cur) | ann.cur == ""] <- "n/a"
 	      levels <- unique(ann.cur)[unique(ann.cur) != "n/a"]
-	      ann.palettes[[a]] <- sample(grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert=T)], length(levels))
 	      if(sum(ann.cur == "n/a") > 0) levels <- c(levels, "n/a")
 	      v <- factor(ann.cur, levels=levels)
+	      
+	      # choose set of distinguishable colors for sample annotations
+	      # see also http://stackoverflow.com/questions/15282580/how-to-generate-a-number-of-most-distinctive-colors-in-r
+	      if (length(levels) <= 5) {
+	        ann.palettes[[a]] <- c("black", "gray", "orange", "blue", "yellow")
+	      } else if (length(levels) <= 8) {
+	        ann.palettes[[a]] <- brewer.pal(length(levels), "Accent")
+	      } else {
+	        set.seed(4711)
+	        ann.palettes[[a]] <- sample(grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert=T)], length(levels))
+	      }
 	      if (is.null(ann.colors)) {
 	        ann.colors <- cbind(ann.palettes[[a]][v])
 	      } else {
