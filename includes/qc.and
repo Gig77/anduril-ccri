@@ -217,9 +217,8 @@ function getQCReport
 		pngImage    = false,
 		plotPar     = "cex.axis=" + boxplotCexAxis,
 		title1      = "Distributions of size-normalized gene expression values per sample",
-		caption1    = "Box plots show the distribution of normalized gene expression values per sample. " +
-		              "Samples with distributions very different from the rest should be removed from the analysis. " +
-		              "Genes only lowly expressed in \\emph{all} samples were removed before plotting.",
+		caption1    = "Samples with distributions very different from the rest should possibly be removed from the analysis. " +
+		              "Genes only lowly expressed in all samples were removed before plotting.",
 		@bind       = cumsum
 	)
 	
