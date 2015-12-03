@@ -60,6 +60,15 @@ geneBodyCoveragePlotScript = StringInput(content=
 			return(0)
 			'''
 )
+
+exprFilterScript = StringInput(content=
+	'''
+	table.out <- Matrix.read(get.input(cf, 'table1'))
+	table.out <- table.out[apply(table.out, 1, mean) >= -2,]
+	return(0)
+	'''
+)
+
 /** Prepares some quality control plots for the given BAM files and expression matrix. */
 function getQCReport
 (
@@ -85,7 +94,8 @@ function getQCReport
 	string              sampleAnnotationColumns = "",
 	float               clusterHeatmapLegendYOffset = 0.15,
 	float               clusterHeatmapLegendXOffset = 0,
-	string              clusterHeatmapMargins = "5,5"
+	string              clusterHeatmapMargins = "5,5",
+	float               boxplotCexAxis = 1
 ) -> (Latex report, Matrix transformedMatrix)
 {
 	qcReports = record()
@@ -188,20 +198,29 @@ function getQCReport
 		imageType      = "single",
 		height         = 11
 	)
+	
+	exprMatrixOnlyExpressed = REvaluate
+	(
+		table1 = expr,
+		script = exprFilterScript
+	)
 
     boxplot = BoxPlot
     (
-    	matr1      = expr,
-		groups     = groups,
-		height     = 12,
-		width      = 20,
-		pagebreak  = true,
-		drawLegend = false,
-		plotType   = "boxplot",
-		pngImage   = false,
-		title1     = "Distributions of expression values per sample",
-		caption1   = "Samples should display similar distributions to avoid batch effects. If few samples have very different distributions consider removing them from the analysis.",
-		@bind      = cumsum
+    	force matr1 = exprMatrixOnlyExpressed.table,
+		groups      = groups,
+		height      = 12,
+		width       = 20,
+		pagebreak   = true,
+		drawLegend  = false,
+		plotType    = "boxplot",
+		pngImage    = false,
+		plotPar     = "cex.axis=" + boxplotCexAxis,
+		title1      = "Distributions of size-normalized gene expression values per sample",
+		caption1    = "Box plots show the distribution of normalized gene expression values per sample. " +
+		              "Samples with distributions very different from the rest should be removed from the analysis. " +
+		              "Genes only lowly expressed in \\emph{all} samples were removed before plotting.",
+		@bind       = cumsum
 	)
 	
 	qcReports["boxplot"] = boxplot
