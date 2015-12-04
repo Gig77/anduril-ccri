@@ -24,7 +24,8 @@ execute <- function(cf) {
 	legendYOffset <- get.parameter(cf, 'legendYOffset', type = 'float')
 	legendXOffset <- get.parameter(cf, 'legendXOffset', type = 'float')
 	margins <- get.parameter(cf, 'margins', type = 'string')
-			
+	method <- get.parameter(cf, 'method', type = 'string')
+	
 	library("DESeq2")
 	library("RColorBrewer")
 	library("gplots")
@@ -77,7 +78,7 @@ execute <- function(cf) {
 	    dimnames(ann.colors)[[2]] <- annotations
 	    
 	    # draw heatmap including annotations
-	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=as.numeric(unlist(strsplit(margins, ","))), ColSideColors = ann.colors, legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method=method, margins=as.numeric(unlist(strsplit(margins, ","))), ColSideColors = ann.colors, legendfun = noLegend)
 	    
 	    # draw legends into right margin
 	    twidth <- max(strwidth(names(ann.factors))) # to have equally sized legends and thus left-aligned boxes
@@ -89,7 +90,7 @@ execute <- function(cf) {
 	    }
 	  } else {
 	    # draw heatmap without annotations on top
-	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method="average", margins=as.numeric(unlist(strsplit(margins, ","))), legendfun = noLegend)
+	    heatmap3(matr, col=rev(hmcol), scale="none", cexRow=cexRow, cexCol=cexRow, method=method, margins=as.numeric(unlist(strsplit(margins, ","))), legendfun = noLegend)
 	  }
 	}
 	

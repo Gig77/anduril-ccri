@@ -75,6 +75,12 @@
             </doc>
         </parameter>
 
+        <parameter name="method" type="string" default="complete">
+            <doc>
+				The agglomeration method to be used by hclust function for clustering. This should be one of "ward", "single", "complete" (= default), "average", "mcquitty", "median", or "centroid".
+            </doc>
+        </parameter>
+
         <parameter name="rlog" type="boolean" default="false">
             <doc>
 				If true, cluster heatmap based on regularized log (rlog) transformation is included in report. 
