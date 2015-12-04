@@ -60,10 +60,8 @@ execute <- function(cf) {
 	      
 	      # choose set of distinguishable colors for sample annotations
 	      # see also http://stackoverflow.com/questions/15282580/how-to-generate-a-number-of-most-distinctive-colors-in-r
-	      if (length(levels) <= 5) {
-	        ann.palettes[[a]] <- c("black", "gray", "orange", "blue", "yellow")
-	      } else if (length(levels) <= 8) {
-	        ann.palettes[[a]] <- brewer.pal(length(levels), "Accent")
+	      if (length(levels) <= 11) {
+	        ann.palettes[[a]] <- sample(c("#FFFF99", "#386CB0", "#BF5B17", "#666666", "#7FC97F", "#BEAED4", "#FF7F00", "#FFFF33", "#999999", "#F2F2F2", "#000000"), length(levels))
 	      } else {
 	        set.seed(4711)
 	        ann.palettes[[a]] <- sample(grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert=T)], length(levels))
@@ -74,7 +72,7 @@ execute <- function(cf) {
 	        ann.colors <- cbind(ann.colors, ann.palettes[[a]][v]) 
 	      }
 	      ann.factors[[a]] <- v
-	    }
+	    } 
 	    dimnames(ann.colors)[[2]] <- annotations
 	    
 	    # draw heatmap including annotations
