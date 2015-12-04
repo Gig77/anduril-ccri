@@ -15,7 +15,8 @@ function GSEAReport
 	float  overlapSigCutoff = 1e-2,
 	float  overlapHSigCutoff = 1e-3,
 	float  sigCutoffCustom = -1,
-	float  hsigCutoffCustom = -1
+	float  hsigCutoffCustom = -1,
+	boolean runOverlapReport = true
 ) -> (Latex report)
 {
 	if (sigCutoffCustom == -1) sigCutoffCustom = sigCutoff
@@ -162,7 +163,8 @@ function GSEAReport
  		hsigCutoff  = overlapHSigCutoff,	
 		similarityCutoffTree = 0.3,
 		similarityCutoffTable = 0.3,
-		topNrecurrentGenes = 30
+		topNrecurrentGenes = 30,
+		@enabled     = runOverlapReport
 	)
 
 	combinedReport = LatexCombiner(array = reports)
@@ -1591,7 +1593,7 @@ function tableReports
 		(
 			latex1 = tableUp, 
 			latex2 = tableDn,
-			sectionTitle = ID,
+			sectionTitle = std.quote(ID, type="Latex"),
 			sectionType = sectionType,
 			@name       = "report" + std.quote(ID, type="Anduril")
 		)
