@@ -1337,7 +1337,7 @@ function GSEAOverlapReport
 			sigCutoff=sigCutoff,
 			hsigCutoff=hsigCutoff,
 			topN=topN,
-			sectionTitle = "Overlap dendrogram " + ID + " Up",
+			sectionTitle = "Overlap dendrogram " + std.quote(ID, type="Latex") + " Up",
 			sectionType  = "subsubsection",
 			@name = "dendrogram" + std.quote(ID, type="Anduril") +"Up"
 		)
@@ -1363,7 +1363,7 @@ function GSEAOverlapReport
 			rename       = "set1=Name 1,set2=Name 2,size1=Size 1,size2=Size 2,jacc=Overlap,shared_core_genes=Shared core enrichment genes (rank)",
 			numberFormat = "jacc=#0.00",
 			pageBreak    = false,
-			section      = "Overlap table " + ID + " Up",
+			section      = "Overlap table " + std.quote(ID, type="Latex") + " Up",
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
 			refs         = hyperlinkRule,
@@ -1400,7 +1400,7 @@ function GSEAOverlapReport
 			listCols     = "",
 			rename       = "gene=Gene,rank=Rank,freq=Freq.,gene_sets(FDR)=Present in gene sets (enrichment FDR)",
 			pageBreak    = false,
-			section      = "Core enrichment genes " + ID + " Up",
+			section      = "Core enrichment genes " + std.quote(ID, type="Latex") + " Up",
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
 			@name        = "geneFreqTable" + std.quote(ID, type="Anduril") +"Up"
@@ -1411,7 +1411,7 @@ function GSEAOverlapReport
 			latex1 = overlap.dendrogram,
 			latex2 = table,
 			latex3 = geneFreqTable,
-			sectionTitle = ID + " UP",
+			sectionTitle = std.quote(ID, type="Latex") + " UP",
 			sectionType = "subsection",
 			@name = "report" + std.quote(ID, type="Anduril") +"Up"
 		)
@@ -1440,7 +1440,7 @@ function GSEAOverlapReport
 			sigCutoff=sigCutoff,
 			hsigCutoff=hsigCutoff,
 			topN=topN,
-			sectionTitle = "Overlap dendrogram " + ID + " Down",
+			sectionTitle = "Overlap dendrogram " + std.quote(ID, type="Latex") + " Down",
 			sectionType  = "subsubsection",
 			@name = "dendrogram" + std.quote(ID, type="Anduril") +"Dn"
 		)
@@ -1466,7 +1466,7 @@ function GSEAOverlapReport
 			rename       = "set1=Name 1,set2=Name 2,size1=Size 1,size2=Size 2,jacc=Overlap,shared_core_genes=Shared core enrichment genes (rank)",
 			numberFormat = "jacc=#0.00",
 			pageBreak    = false,
-			section      = "Overlap table " + ID + " Down",
+			section      = "Overlap table " + std.quote(ID, type="Latex") + " Down",
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
 			refs         = hyperlinkRule,
@@ -1503,7 +1503,7 @@ function GSEAOverlapReport
 			listCols     = "",
 			rename       = "gene=Gene,rank=Rank,freq=Freq.,gene_sets(FDR)=Present in gene sets (enrichment FDR)",
 			pageBreak    = false,
-			section      = "Core enrichment genes " + ID + " Down",
+			section      = "Core enrichment genes " + std.quote(ID, type="Latex") + " Down",
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
 			@name        = "geneFreqTable" + std.quote(ID, type="Anduril") +"Dn"
@@ -1514,7 +1514,7 @@ function GSEAOverlapReport
 			latex1 = overlap.dendrogram,
 			latex2 = table,
 			latex3 = geneFreqTable,
-			sectionTitle = ID + " DN",
+			sectionTitle = std.quote(ID, type="Latex") + " DN",
 			sectionType = "subsection",
 			@name = "report" + std.quote(ID, type="Anduril") +"Dn"
 		)
