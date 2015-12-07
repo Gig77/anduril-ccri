@@ -1,0 +1,50 @@
+function keggReport
+(
+  	CSV	   degsAll,
+  	string ID,
+  	string sectionTitle,
+  	string sectionType,
+  	record comparison,
+  	int    topNdiagrams = 10,
+  	float  fdrCutoff = 0.05
+) -> (Latex report) 
+{
+
+	kegg = KEGGPathway
+	(
+		degs         = degsAll,
+		fcColumnName = "fc" + ID,
+		fdrCutoff    = fdrCutoff,
+		topN         = topNdiagrams,
+		caption      = "This pathway was enriched for genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG + "."
+	)
+
+	filteredPathways = TableQuery
+	(
+		table1 = kegg.pathways, 
+		query  = '''SELECT * FROM table1 WHERE "q.val" <= ''' + fdrCutoff + ''' ORDER BY "q.val"'''
+	)
+
+	pathwaysTableReport = CSV2Latex
+	(
+		tabledata	 = filteredPathways.table,
+        caption      = "List of KEGG pathways significantly enriched (q-value equal or below " + fdrCutoff + ") for genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG + ".",
+        columns      = "name,p.val,q.val,set.size,dir",
+		rename       = "name=Name,set.size=Pathway size,dir=Direction of enrichment",
+		colFormat    = "lrrcc",
+        numberFormat = "p.val=#0.0E00,q.val=#0.0E00",
+        countRows    = true,
+        skipEmpty    = true
+    )
+
+    combinedReport = LatexCombiner
+    (
+    	latex1=pathwaysTableReport.report, 
+    	latex2=kegg.document, 
+		sectionTitle = sectionTitle,
+		sectionType  = sectionType,
+    	pagebreak=true
+    )
+	
+	return combinedReport
+}

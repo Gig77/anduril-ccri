@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<component>
+    <name>KEGGPathway</name>
+    <version>1.0</version>
+    <doc>
+    	Draws pathway diagrams of canonical KEGG pathways with up- and down-regulated genes highlighted in red and blue, respectively.
+    	The component can be operated in two modes. In enrichment mode, the component first identifies enriched pathways in the input genes
+    	and then draws diagrams for the top N enriched pathways. In drawing mode, the component just draws pathway diagrams for the specified KEGG pathways,
+    	i.e. not performing enrichment.
+    </doc>
+
+    <author email="christian.frech@ccri.at">Christian Frech</author>
+    <category>Expression</category>
+
+    <launcher type="R">
+        <argument name="file" value="main.r"/>
+    </launcher>
+
+    <inputs>
+
+        <input name="degs" type="CSV" array="false">
+            <doc>
+            	List of input genes with fold-changes. The first column is supposed to contain Ensembl gene IDs, which internally are converted to Entrez gene ids for 
+                pathway mapping.
+            </doc>
+        </input>
+
+    </inputs>
+
+    <outputs>
+
+		<output name="pathways" type="CSV">
+			<doc>CSV file with KEGG pathways and their enrichment.</doc>
+		</output>
+
+		<output name="document" type="Latex">
+			<doc>Latex report containing pathway diagrams Differentially expressed genes.</doc>
+		</output>
+
+    </outputs>
+
+    <parameters>
+
+        <parameter name="fdrCutoff" type="float" default="0.1">
+            <doc>
+				FDR cut-off to consider a pathway significantly enriched.
+            </doc>
+        </parameter>
+
+        <parameter name="topN" type="int" default="10">
+            <doc>
+				Plot diagrams for top-N most enriched pathways. Others will be skipped.
+            </doc>
+        </parameter>
+
+        <parameter name="fcColumnName" type="string" default="fc">
+            <doc>
+				Name of column containing fold-changes.
+            </doc>
+        </parameter>
+        
+        <parameter name="caption" type="string" default = "">
+            <doc>
+				This caption is prefixed with the pathway name and suffixed with enrichment details and legend details. 
+            </doc>
+        </parameter>
+
+        <parameter name="sectionTitle" type="string" default="">
+            <doc>
+				Section title.
+            </doc>
+        </parameter>
+
+        <parameter name="sectionType" type="string" default="subsection">
+            <doc>
+				Section type.
+            </doc>
+        </parameter>        
+
+    </parameters>
+</component>
+
+
