@@ -1,6 +1,8 @@
 function keggReport
 (
-  	CSV	   degsAll,
+  	CSV	   degsCalled,
+  	CSV    degsAll,
+	CSV    geneNames,  	
   	string ID,
   	string sectionTitle,
   	string sectionType,
@@ -9,37 +11,66 @@ function keggReport
   	float  fdrCutoff = 0.05
 ) -> (Latex report) 
 {
+	expressed = TableQuery
+	(
+		table1 = degsAll,
+		query  = '''SELECT "ids" FROM table1 WHERE "meanExprE'''+ID+'''" > 10 OR "meanExprC'''+ID+'''" > 10'''
+	)  
 
 	kegg = KEGGPathway
 	(
-		degs         = degsAll,
-		fcColumnName = "fc" + ID,
-		fdrCutoff    = fdrCutoff,
-		topN         = topNdiagrams,
-		caption      = "This pathway was enriched for genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG + "."
+		degs          = degsCalled,
+		universe      = expressed,
+		fdrCutoff     = fdrCutoff,
+		topN          = topNdiagrams,
+		caption       = "This pathway was enriched for genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG + "."
 	)
 
-	filteredPathways = TableQuery
+	// convert Ensembl IDs to HGNC gene names, color by fold-change (up or down)	
+	expand = ExpandCollapse
 	(
-		table1 = kegg.pathways, 
-		query  = '''SELECT * FROM table1 WHERE "q.val" <= ''' + fdrCutoff + ''' ORDER BY "q.val"'''
+		kegg.pathways, 
+		listCols   = "geneID", 
+		duplicates = true, 
+		@keep      = false
 	)
-
-	pathwaysTableReport = CSV2Latex
+	
+	table = TableQuery
 	(
-		tabledata	 = filteredPathways.table,
-        caption      = "List of KEGG pathways significantly enriched (q-value equal or below " + fdrCutoff + ") for genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG + ".",
-        columns      = "name,p.val,q.val,set.size,dir",
-		rename       = "name=Name,set.size=Pathway size,dir=Direction of enrichment",
-		colFormat    = "lrrcc",
-        numberFormat = "p.val=#0.0E00,q.val=#0.0E00",
+		table1 = expand 	@require, 
+		table2 = geneNames  @require,
+		table3 = degsCalled    @require,
+		query = 
+			'''
+			SELECT T1."ID", 
+				   T1."Description",
+				   T1."GeneRatio", 
+				   T1."BgRatio", 
+				   T1."qvalue", 
+				   T1."dir" AS "direction", 
+				   GROUP_CONCAT('\textcolor' || CASEWHEN(T3."fc">0, '{red}{', '{blue}{') || IFNULL(T2."Gene", T1."geneID") || '}' SEPARATOR ',') AS "Genes"
+			FROM   table1 AS T1, table2 AS T2, table3 as T3
+			WHERE  (T1."geneID" = T2."Ensembl" and T1."geneID" = T3."ids")
+			GROUP  BY T1."ID", T1."Description", T1."GeneRatio", T1."BgRatio", T1."qvalue", T1."dir"
+			ORDER  BY T1."qvalue"
+			'''
+	)
+	
+	tableReport = CSV2Latex
+	(
+		tabledata	 = table,
+        caption      = "List of KEGG pathways significantly enriched (q-value equal or below " + fdrCutoff + ") for genes differentially expressed between " + comparison.caseG + " and " + comparison.controlG + ". " +
+                       "Red and blue colors refer to significantly \\textcolor{red}{up}- and \\textcolor{blue}{down}-regulated genes found in this pathway, respectively.",
+		colFormat    = "lp{3cm}ccrcp{7.5cm}",
+		listCols     = "Genes",
+        numberFormat = "qvalue=#0.0E00,Genes=RAW_LATEX",
         countRows    = true,
         skipEmpty    = true
     )
 
     combinedReport = LatexCombiner
     (
-    	latex1=pathwaysTableReport.report, 
+    	latex1=tableReport.report, 
     	latex2=kegg.document, 
 		sectionTitle = sectionTitle,
 		sectionType  = sectionType,

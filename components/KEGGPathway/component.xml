@@ -20,8 +20,14 @@
 
         <input name="degs" type="CSV" array="false">
             <doc>
-            	List of input genes with fold-changes. The first column is supposed to contain Ensembl gene IDs, which internally are converted to Entrez gene ids for 
-                pathway mapping.
+            	List of differentially expressed genes with fold-changes. The first column is supposed to contain Ensembl gene IDs, which internally are converted to Entrez gene ids for 
+                pathway mapping. The name of column containing fold-changes can be specified with parameter 'fcColumnName'. 
+            </doc>
+        </input>
+
+        <input name="universe" type="CSV" array="false" optional="true">
+            <doc>
+            	List of Ensembl gene IDs that serve as background gene set in the enrichment. If not specified, all genes of the organism are used as background.
             </doc>
         </input>
 
@@ -55,10 +61,10 @@
 
         <parameter name="fcColumnName" type="string" default="fc">
             <doc>
-				Name of column containing fold-changes.
+				Name of column in 'degs' containing fold-changes.
             </doc>
         </parameter>
-        
+
         <parameter name="caption" type="string" default = "">
             <doc>
 				This caption is prefixed with the pathway name and suffixed with enrichment details and legend details. 
