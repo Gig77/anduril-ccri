@@ -58,12 +58,13 @@ function VennSetTableReport
 			}
 		}
 		query = query + ')/' + std.length(outputComparisons)
+		if (orderCol == "FC") { query = query + " DESC" }
 	}
 	else {
 		if (orderCol == "q") {
 			query = query + ' ORDER BY (CASEWHEN("' + orderCol + '_' + orderBy + '"=0,-300,LOG("q_' + orderBy + '")))'
 		} else {
-			query = query + ' ORDER BY ("' + orderCol + '_' + orderBy + '")'
+			query = query + ' ORDER BY ("' + orderCol + '_' + orderBy + '") DESC'
 		}
 	}
 		
