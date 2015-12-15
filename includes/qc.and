@@ -327,6 +327,7 @@ function getQCReport
 				model.full <- model.matrix(as.formula(paste0("~", covariate)), data=table2)
 				expr <- table1[,rownames(table2)] 
 				table.out <- ComBat(dat=expr, batch=table2[,batch], mod=model.full)
+				table.out <- cbind(data.frame(Ensembl=as.character(table1[,1])), table.out)
 				return(0)
 			''')
 		)
@@ -372,6 +373,8 @@ function getQCReport
 						
 				library("RColorBrewer")
 				library("gplots")
+				rownames(table1) <- table1[,1]
+				table1 <- table1[,-1]
 				hmcol <- colorRampPalette(brewer.pal(10, "RdBu"))(256)
 				dists <- as.matrix(as.dist(1-cor(table1, method="spearman"))) # spearman correlation
 				
