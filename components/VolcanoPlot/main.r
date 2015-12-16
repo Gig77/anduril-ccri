@@ -27,6 +27,7 @@ execute <- function(cf) {
 	
 	# prepare data
 	res <- data.frame(id=expr[,1], log2FoldChange=expr[,fccol], pvalue=pmax(expr[,pcol], minP), padj=expr[,qcol], stringsAsFactors = F)
+	res <- res[!is.na(res$padj) & !is.na(res$log2FoldChange),]
 
 	if (get.input(cf, "geneNames") != "") {
 	  geneNames <- CSV.read(get.input(cf, "geneNames"))
