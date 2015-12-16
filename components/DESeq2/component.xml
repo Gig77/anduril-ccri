@@ -62,6 +62,18 @@
             </doc>
         </parameter>
 
+        <parameter name="reducedDesign" type="string" default = "">
+            <doc>
+				Reduced design for a likelihood ratio test (LRT).
+            </doc>
+        </parameter>
+
+        <parameter name="coefficient" type="string" default = "">
+            <doc>
+				The name of the individual effect (coefficient) for building a results table. Use this argument for continuous variables, individual effects or for individual interaction terms.
+            </doc>
+        </parameter>
+
         <parameter name="colSuffix" type="string" default="">
             <doc>
             	Name of comparison. Appended to each column name of output table to make them unique.

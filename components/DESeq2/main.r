@@ -22,6 +22,8 @@ execute <- function(cf) {
 	colSuffix    <- get.parameter(cf, 'colSuffix',       type = 'string')
 	minReplicatesForReplace <- get.parameter(cf, "minReplicatesForReplace", type = 'int')
 	design       <- get.parameter(cf, 'design',          type = 'string')
+	reducedDesign       <- get.parameter(cf, 'reducedDesign',          type = 'string')
+	coefficient   <- get.parameter(cf, 'coefficient',      type = 'string')
 	cooksCutoff  <- get.parameter(cf, 'cooksCutoff',     type = 'float')
 	trim  <- get.parameter(cf, 'trim',     type = 'float')
 	
@@ -82,8 +84,13 @@ execute <- function(cf) {
   dds <- estimateDispersions(dds)
   
   # fit model
-  print("Performing negative binomial Wald test")
-  dds <- nbinomWaldTest(dds)
+  if (reducedDesign == "") {
+	  print("Performing negative binomial Wald test")
+	  dds <- nbinomWaldTest(dds)
+  } else {
+	  print(paste0("Performing negative binomial LRT test with reduced design '", reducedDesign, "'"))
+	  dds <- nbinomLRT(dds, reduced=as.formula(reducedDesign))
+  }
   
   # replace outliers and fit again
   # NOTE: we have to do it this way because 'cooksCutoff' parameter cannot be specified with DESeq function
@@ -93,11 +100,19 @@ execute <- function(cf) {
   if (minReplicatesForReplace > 0) {
     print(paste0("Replacing outliers and re-fitting model: minReplicatesForReplace=", minReplicatesForReplace, ", cooksCutoff=", cooksCutoff))
     dds <- replaceOutliers(dds, trim = trim, cooksCutoff = cooksCutoff, minReplicates = minReplicatesForReplace)
-    dds <- nbinomWaldTest(dds)
-  }
+	if (reducedDesign == "") {
+		dds <- nbinomWaldTest(dds)
+	} else {
+		dds <- nbinomLRT(dds, reduced=as.formula(reducedDesign))
+	}
+}
   
   # extract results using case and control group as contrasts
-	res <- results(dds, contrast=c("group", caseGroup, controlGroup), cooksCutoff=FALSE)
+	if (coefficient == "") {
+		res <- results(dds, contrast=c("group", caseGroup, controlGroup), cooksCutoff=FALSE)
+	} else {
+		res <- results(dds, name=coefficient, cooksCutoff=FALSE)
+	}
 	results.out <- data.frame(ids=rownames(res), as.data.frame(res))
 	
 	# add normalized sample counts to output and compute separate means for experiment and control group	
