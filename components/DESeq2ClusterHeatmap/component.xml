@@ -103,6 +103,10 @@
 			<doc>Column (bottom) and row (right) margins. Increase second value if legend plots into row labels.</doc>
 		</parameter>
 
+		<parameter name="minSumReads" type="int" default="10">
+			<doc>Minimum number of reads across all samples. Genes with less reads are excluded from expression matrix before clustering.</doc>
+		</parameter>
+
 		<parameter name="legendXOffset" type="float" default="0">
 			<doc>Relative offset of legend (value between 0 and 1) from right side of the plot. Increase this value if legends plots too far to the right after increasing margin.</doc>
 		</parameter>

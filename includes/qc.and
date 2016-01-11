@@ -95,6 +95,7 @@ function getQCReport
 	float               clusterHeatmapLegendYOffset = 0.15,
 	float               clusterHeatmapLegendXOffset = 0,
 	string              clusterHeatmapMargins = "5,5",
+	int                 clusterHeatmapMinSumReads = 10,
 	float               boxplotCexAxis = 1,
 	string              clusterHeatmapMethod = "complete"
 ) -> (Latex report, Matrix transformedMatrix)
@@ -288,7 +289,8 @@ function getQCReport
 		legendYOffset = clusterHeatmapLegendYOffset,
 		legendXOffset = clusterHeatmapLegendXOffset,
 		margins       = clusterHeatmapMargins,
-		method        = clusterHeatmapMethod
+		method        = clusterHeatmapMethod,
+		minSumReads   = clusterHeatmapMinSumReads
 	)
 	
     mds = MDSPlot

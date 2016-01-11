@@ -25,6 +25,7 @@ execute <- function(cf) {
 	legendXOffset <- get.parameter(cf, 'legendXOffset', type = 'float')
 	margins <- get.parameter(cf, 'margins', type = 'string')
 	method <- get.parameter(cf, 'method', type = 'string')
+	minSumReads <- get.parameter(cf, 'minSumReads', type = 'int')
 	
 	library("DESeq2")
 	library("RColorBrewer")
@@ -35,8 +36,8 @@ execute <- function(cf) {
 	samples <- samples[samples$Alias %in% colnames(countMatrix),]
 	countMatrix <- countMatrix[,rownames(samples)]
 	cds <- DESeqDataSetFromMatrix(countData = countMatrix, colData = samples, design = ~1)	
-	expressed <- rowSums(counts(cds)) >= 10
-	caption <- paste(caption, "The clustering is based on", sum(expressed), "expressed genes.", sum(!expressed), "genes were excluded because they had less than ten reads in total across all samples.")
+	expressed <- rowSums(counts(cds)) >= minSumReads
+	caption <- paste(caption, "The clustering is based on", sum(expressed), "expressed genes.", sum(!expressed), "genes were excluded because they had less than", minSumReads, " reads in total across all samples.")
 
 	report.dir <- get.output(cf, 'report')
 	dir.create(report.dir, recursive=TRUE)
