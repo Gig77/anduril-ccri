@@ -15,6 +15,7 @@ execute <- function(cf) {
 	col.fc <- get.parameter(cf, "colFC")
 	min.p <- get.parameter(cf, "minP", "float")
 	rank.by <- get.parameter(cf, "rankBy", "string")
+	ignore.direction <- get.parameter(cf, "ignoreDirection", "boolean")
 	
 	# map IDs to name
 	deg.named <- merge(deg[,c("ids", col.p, col.fc)], annotation[,c(1,2)], by.x="ids", by.y=names(annotation)[1])
@@ -28,11 +29,23 @@ execute <- function(cf) {
 
 	# convert p-values to scores where sign indicates directionality (up or downregulated)
 	if (rank.by == "p") {
-		deg.named$score <- ifelse(deg.named[,col.fc]>0, -log(deg.named[,col.p],10), log(deg.named[,col.p],10))
+		if (ignore.direction) {
+			deg.named$score <- -log(deg.named[,col.p],10)
+		} else {
+			deg.named$score <- ifelse(deg.named[,col.fc]>0, -log(deg.named[,col.p],10), log(deg.named[,col.p],10))
+		}
 	} else if (rank.by == "fc") {
-		deg.named$score <- deg.named[,col.fc]
+		if (ignore.direction) {
+			deg.named$score <- abs(deg.named[,col.fc])
+		} else {
+			deg.named$score <- deg.named[,col.fc]
+		}
 	} else if (rank.by == "pi") {
-		deg.named$score <- deg.named[,col.fc] * -log(deg.named[,col.p],10)
+		if (ignore.direction) {
+			deg.named$score <- abs(deg.named[,col.fc]) * -log(deg.named[,col.p],10)
+		} else {
+			deg.named$score <- deg.named[,col.fc] * -log(deg.named[,col.p],10)
+		}
 	} else {
 		stop(sprintf("ERROR: Unknown value for parameter 'rankBy': %s", rank.by))
 	}

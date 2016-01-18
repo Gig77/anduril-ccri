@@ -60,6 +60,12 @@
             </doc>
         </parameter>
 
+        <parameter name="ignoreDirection" type="boolean" default="false">
+            <doc>
+				If true, directionality of expression is not considered, i.e. top-ranked genes will consist of both up- and down-regulated genes.
+            </doc>
+        </parameter>
+
     </parameters>
     
 </component>
