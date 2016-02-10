@@ -43,21 +43,29 @@ function heatmapReportNotEmpty
 		param1 = comparison.caseG + "," + comparison.controlG + "," + comparison.otherG,
 		script = StringInput(content=
 			"""
+			array.out <- list()
+
 			groups=unlist(strsplit(param1, ","))
-			table.out <- table1[table1$ID %in% groups, c("ID", "Members")]
-			splitted <- strsplit(as.character(table.out$Members), ",")
-			table.out <- data.frame(Sample=unlist(splitted), Grp=rep.int(table.out$ID, sapply(splitted, length)))
-			unassigned <- colnames(table2[,-1])[!colnames(table2[,-1]) %in% table.out$Sample] 			    
-			table.out <- rbind(table.out, data.frame(Sample=unassigned, Grp=rep.int("other", length(unassigned)))) # blank column name b/c of ugly label overlap in pheatmap
-			table.out <- table.out[!duplicated(table.out$Sample),]
+			array.out[["groups"]] <- table1[table1$ID %in% groups, c("ID", "Members")]
+			splitted <- strsplit(as.character(array.out[["groups"]]$Members), ",")
+			array.out[["groups"]] <- data.frame(Sample=unlist(splitted), Grp=rep.int(array.out[["groups"]]$ID, sapply(splitted, length)))
+			unassigned <- colnames(table2[,-1])[!colnames(table2[,-1]) %in% array.out[["groups"]]$Sample] 			    
+			array.out[["groups"]] <- rbind(array.out[["groups"]], data.frame(Sample=unassigned, Grp=rep.int("other", length(unassigned)))) # blank column name b/c of ugly label overlap in pheatmap
+			array.out[["groups"]] <- array.out[["groups"]][!duplicated(array.out[["groups"]]$Sample),]
+			
+			colors <- c("gray", "black", "red", "blue", "orange", "yellow", "lightgreen", "pink", "magenta", "darkgray", "lightblue")
+			array.out[["colors"]] <- data.frame(Annotation="Grp", Value=unique(array.out[["groups"]]$Grp), Color=colors[1:length(unique(array.out[["groups"]]$Grp))])
+			
+			table.out <- data.frame()
 			""")
 	)
 	
 	heatmap = HeatMapReport
 	(
 		force matr     = groupExprGCorr.table,
-		colLabels      = sample2group.table,
-		caption        = "Heatmap of DEGs between "+comparison.caseG+" and "+comparison.controlG+".",
+		colLabels      = sample2group.array["groups"],
+		annColors      = sample2group.array["colors"],
+		caption        = "Heatmap of genes differentially expressed between "+comparison.caseG+" and "+comparison.controlG+".",
 		clusterMethod  = "average",
 		distanceMetric = "correlation,euclidean",
 		drawColnames   = true,
