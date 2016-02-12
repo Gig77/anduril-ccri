@@ -32,7 +32,7 @@ function PGEReport
 		query  = 
 			'''
 				SELECT A."chr", A."start", A."end", A."pvalue", A."pvalueadj", A."common", A."size", 
-				       GROUP_CONCAT('\textcolor' || CASEWHEN(C."fc">0, '{red}{', '{blue}{') || IFNULL(B."Associated Gene Name", A."genes") || '}' SEPARATOR ', ') AS HGNC 
+				       GROUP_CONCAT('\textcolor' || CASEWHEN(C."fc">0, '{red}{', '{blue}{') || IFNULL(REPLACE(B."Associated Gene Name", '_', '\_'), A."genes") || '}' SEPARATOR ', ') AS HGNC 
 				FROM table1 A 
 					 LEFT OUTER JOIN table2 B ON A."genes" = B."Ensembl Gene ID"
 					 LEFT OUTER JOIN table3 C ON A."genes" = C."ids"
