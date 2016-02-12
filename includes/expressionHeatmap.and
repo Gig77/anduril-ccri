@@ -65,7 +65,7 @@ function heatmapReportNotEmpty
 		force matr     = groupExprGCorr.table,
 		colLabels      = sample2group.array["groups"],
 		annColors      = sample2group.array["colors"],
-		caption        = "Heatmap of genes differentially expressed between "+comparison.caseG+" and "+comparison.controlG+".",
+		caption        = "Heatmap of genes differentially expressed between "+comparison.caseG+" and "+comparison.controlG+". Blue indicates low expression, red high.",
 		clusterMethod  = "average",
 		distanceMetric = "correlation,euclidean",
 		drawColnames   = true,
