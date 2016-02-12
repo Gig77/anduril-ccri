@@ -301,6 +301,7 @@ function getQCReport
 		dimensions   = 2,
 		plotNames    = true,
 		cex          = cexMDS,
+		pch          = 19,
 		width        = 16,
 		pagebreak    = true,
 		caption       = "Sample clustering based on normalized gene expression values. Sample distances were computed by multi-dimensional scaling (MDS) and are proportional to global differences in normalized gene expression values."
@@ -342,6 +343,7 @@ function getQCReport
 			dimensions   = 2,
 			plotNames    = true,
 			cex          = 0.7,
+			pch          = 19,
 			width        = 16,
 			pagebreak    = true,
 			caption       = "Sample clustering based on normalized gene expression values after correcting for batch '" + batch1 + "'. Batch effect correction was performed using ComBat from R/Bioconductor package SVA." 
