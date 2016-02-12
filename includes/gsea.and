@@ -130,6 +130,21 @@ function GSEAReport
 		)
 	}
 	
+	category = "IKAROS"
+	if (std.exists(enrichedUp, key=category))
+	{
+		reports[category] = GSEAReportIKAROS
+		(
+			enrichedUp = enrichedUp[category],
+			enrichedDn = enrichedDn[category],
+			minSetSize = minSetSizes[category],
+			maxSetSize = maxSetSizes[category],
+			tableReportComparisons = tableReportComparisons,
+			nesCutoff  = nesCutoff,
+			@name      = category
+		)
+	}
+	
 	// GSEA overlap report
 	
 	enrichedUpByComparison = record()
@@ -804,6 +819,94 @@ function GSEAReportGeneSigDB
 	(
 		array = reports,
 		sectionTitle = "GSEA GeneSigDB 4.0",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function GSEAReportIKAROS
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportComparisons,
+	int    minSetSize,
+	int    maxSetSize,
+	int	   topNHeatmap = 80,
+	int    topNTable = 100,
+	float  nesCutoff = 0,
+	float  sigCutoff = 1e-1,
+	float  hsigCutoff = 1e-2
+) -> (Latex report)
+{
+	reports = record()
+
+	category = "IKAROS"
+	title = "IKAROS gene sets"
+	description = "Literature-curated IKAROS gene sets."
+	filterStr = '''table.out <- table1[order(abs(table1$NES), decreasing=T),] ; table.out <- table.out[1:min(nrow(table.out),''' + topNTable + '''),]'''
+	filter = StringInput(content=filterStr, @name="filter"+category)
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = "Top-" + topNHeatmap + " most enriched " + title + " (rows) across all comparisons (columns). " +
+		          "Significantly enriched gene sets (FDR below " + sigCutoff + ") indicated by single asterisk. " +
+		          "Double asterisk indicate high significance (FDR below " + hsigCutoff + ").",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = sigCutoff,
+		hsigCutoff = hsigCutoff, 
+		topN = topNHeatmap,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportComparisons = tableReportComparisons,
+		hyperlinkRule = hyperlinkRule,
+		fdr = sigCutoff,
+		nes = nesCutoff,
+		topNTable = topNTable,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsection",
+		includeDescription = true,
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = "",
+		sectionType = "",
+		@name = "report"+category
+	)
+
+	// ----
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA IKAROS",
 		sectionType = "section"
 	)
 	
