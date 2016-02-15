@@ -24,6 +24,7 @@ execute <- function(cf) {
 	cexLabel <- get.parameter(cf, 'cexLabel', 'float')
 	cexPoint <- get.parameter(cf, 'cexPoint', 'float')
 	minP <- get.parameter(cf, 'minP', 'float')
+	labelNonameGenesWithId <- get.parameter(cf, 'labelNonameGenesWithId', 'boolean')
 	
 	# prepare data
 	res <- data.frame(id=expr[,1], log2FoldChange=expr[,fccol], pvalue=pmax(expr[,pcol], minP), padj=expr[,qcol], stringsAsFactors = F)
@@ -34,7 +35,9 @@ execute <- function(cf) {
 	  res <- merge(res, geneNames[,c(1,geneNameCol)], by.x=1, by.y=1, all.x=T)
 	  res <- res[!duplicated(res$id),]
 	  names(res)[5] <- "Name"
-	  res$Name[is.na(res$Name) | res$Name == ""] <- res$id[is.na(res$Name) | res$Name == ""]
+	  if (labelNonameGenesWithId) {
+	  	res$Name[is.na(res$Name) | res$Name == ""] <- res$id[is.na(res$Name) | res$Name == ""]
+	  }
 	} else {
 	  res$Name <- res[,1]
 	}

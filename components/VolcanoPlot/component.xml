@@ -115,6 +115,13 @@
             </doc>
         </parameter>
 
+        <parameter name="labelNonameGenesWithId" type="boolean" default="true">
+            <doc>
+				If gene would be labeled but its name could not be determine from the input, use gene ID as label instead. Default is true. 
+				Set this to false and use a filtered 'geneNames' input file to label only specific genes in plot.
+            </doc>
+        </parameter>
+
         <parameter name="caption" type="string" default="Volcano plot.">
             <doc>
 				Figure caption.
