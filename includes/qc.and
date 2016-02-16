@@ -342,7 +342,7 @@ function getQCReport
 			sectionTitle = "Sample clustering after batch effect correction",
 			dimensions   = 2,
 			plotNames    = true,
-			cex          = 0.7,
+			cex          = cexMDS,
 			pch          = 19,
 			width        = 16,
 			pagebreak    = true,
