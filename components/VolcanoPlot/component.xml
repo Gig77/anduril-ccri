@@ -122,6 +122,12 @@
             </doc>
         </parameter>
 
+        <parameter name="onlyGenesWithNames" type="boolean" default="false">
+            <doc>
+				If true, only genes that have a name assigned in input 'geneNames' are plotted. Default is false (i.e. plot all genes).
+            </doc>
+        </parameter>
+
         <parameter name="caption" type="string" default="Volcano plot.">
             <doc>
 				Figure caption.
