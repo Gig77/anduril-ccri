@@ -6,7 +6,8 @@ function heatmapReportNotEmpty
 	record comparison,
 	string sectionType,
 	float fontSizeRow,
-	float fontSizeCol
+	float fontSizeCol,
+	boolean includeOutgroup
 ) -> (Latex report)
 {
 	groupExprG = IDConvert
@@ -23,9 +24,14 @@ function heatmapReportNotEmpty
 	groupExprGCorr = REvaluate
 	(
 		table1 = groupExprG,
+		param1 = includeOutgroup,
+		param2 = comparison.sampleIds,
 		script = StringInput(content=
 			'''
 			matr <- Matrix.read(get.input(cf, 'table1'))
+			if (param1 == "false") {
+				matr <- matr[,colnames(matr) %in% unlist(strsplit(param2, ","))]
+			}
 			matr <- as.data.frame(matr)
 			stdzero <- apply(matr, 1, sd) == 0
 			if (sum(stdzero) > 0) {
@@ -39,7 +45,7 @@ function heatmapReportNotEmpty
 	sample2group = REvaluate
 	(
 		table1 = sampleGroups,
-		table2 = exprMatrix,
+		table2 = groupExprGCorr.table,
 		param1 = comparison.caseG + "," + comparison.controlG + "," + comparison.otherG,
 		script = StringInput(content=
 			"""
@@ -97,7 +103,8 @@ function getHeatmapReport
 	record comparison,
 	string sectionType,
 	float fontSizeRow = 3,
-	float fontSizeCol = 5
+	float fontSizeCol = 5,
+	boolean includeOutgroup = true
 ) -> (Latex report)
 {
 	exprMatrixFiltered = CSVFilter
@@ -122,13 +129,14 @@ function getHeatmapReport
 		
 		case medium = heatmapReportNotEmpty
 		(
-			exprMatrix   = exprMatrixFiltered,
-			geneNames    = geneNames,
-			sampleGroups = sampleGroups,
-			comparison   = comparison,
-			sectionType  = sectionType,
-			fontSizeRow  = fontSizeRow,
-			fontSizeCol  = fontSizeCol
+			exprMatrix      = exprMatrixFiltered,
+			geneNames       = geneNames,
+			sampleGroups    = sampleGroups,
+			comparison      = comparison,
+			sectionType     = sectionType,
+			fontSizeRow     = fontSizeRow,
+			fontSizeCol     = fontSizeCol,
+			includeOutgroup = includeOutgroup
 		)
 		
 		case large = StringInput(content="dummy")
