@@ -2,12 +2,14 @@ function heatmapReportNotEmpty
 (
   	Matrix exprMatrix,
   	CSV geneNames,
+  	CSV samples,
   	CSV sampleGroups,
 	record comparison,
 	string sectionType,
 	float fontSizeRow,
 	float fontSizeCol,
-	boolean includeOutgroup
+	boolean includeOutgroup,
+	string sampleAnnotationNames
 ) -> (Latex report)
 {
 	groupExprG = IDConvert
@@ -46,7 +48,9 @@ function heatmapReportNotEmpty
 	(
 		table1 = sampleGroups,
 		table2 = groupExprGCorr.table,
+		table3 = samples,
 		param1 = comparison.caseG + "," + comparison.controlG + "," + comparison.otherG,
+		param2 = sampleAnnotationNames,
 		script = StringInput(content=
 			"""
 			array.out <- list()
@@ -61,6 +65,14 @@ function heatmapReportNotEmpty
 			
 			colors <- c("gray", "black", "red", "blue", "orange", "yellow", "lightgreen", "pink", "magenta", "darkgray", "lightblue")
 			array.out[["colors"]] <- data.frame(Annotation="Grp", Value=unique(array.out[["groups"]]$Grp), Color=colors[1:length(unique(array.out[["groups"]]$Grp))])
+			
+			# add additional annotations if specified
+			if (param2 != "") {
+				array.out[["groups"]] <- merge(array.out[["groups"]], table3[,c("Alias", unlist(strsplit(param2, ",")))], by.x = "Sample", by.y = "Alias", all.x = TRUE)
+				for (p in unlist(strsplit(param2, ","))) {
+					array.out[["colors"]] <- rbind(array.out[["colors"]], data.frame(Annotation=p, Value=unique(array.out[["groups"]][,p]), Color=colors[1:length(unique(array.out[["groups"]][,p]))])) 
+				}
+			}
 			
 			table.out <- data.frame()
 			""")
@@ -99,12 +111,14 @@ function getHeatmapReport
   	Matrix exprMatrix,
   	CSV degCalled,
   	CSV geneNames,
+  	CSV samples,
   	CSV sampleGroups,
 	record comparison,
 	string sectionType,
 	float fontSizeRow = 3,
 	float fontSizeCol = 5,
-	boolean includeOutgroup = true
+	boolean includeOutgroup = true,
+	string sampleAnnotationNames = ""
 ) -> (Latex report)
 {
 	exprMatrixFiltered = CSVFilter
@@ -129,14 +143,16 @@ function getHeatmapReport
 		
 		case medium = heatmapReportNotEmpty
 		(
-			exprMatrix      = exprMatrixFiltered,
-			geneNames       = geneNames,
-			sampleGroups    = sampleGroups,
-			comparison      = comparison,
-			sectionType     = sectionType,
-			fontSizeRow     = fontSizeRow,
-			fontSizeCol     = fontSizeCol,
-			includeOutgroup = includeOutgroup
+			exprMatrix            = exprMatrixFiltered,
+			geneNames             = geneNames,
+			samples               = samples,
+			sampleGroups          = sampleGroups,
+			comparison            = comparison,
+			sectionType           = sectionType,
+			fontSizeRow           = fontSizeRow,
+			fontSizeCol           = fontSizeCol,
+			includeOutgroup       = includeOutgroup,
+			sampleAnnotationNames = sampleAnnotationNames
 		)
 		
 		case large = StringInput(content="dummy")
