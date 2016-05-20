@@ -64,7 +64,8 @@ geneBodyCoveragePlotScript = StringInput(content=
 exprFilterScript = StringInput(content=
 	'''
 	table.out <- Matrix.read(get.input(cf, 'table1'))
-	table.out <- table.out[apply(table.out, 1, mean) >= -2,]
+	rowmeans <- apply(table.out, 1, mean)
+	table.out <- table.out[rowmeans >= quantile(rowmeans, 0.5),]
 	return(0)
 	'''
 )
