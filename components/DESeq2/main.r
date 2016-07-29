@@ -98,8 +98,11 @@ execute <- function(cf) {
   # original call instead of the above: dds <- DESeq(dds, minReplicatesForReplace=ifelse(minReplicatesForReplace > 0, minReplicatesForReplace, Inf))
   
   if (minReplicatesForReplace > 0) {
-    print(paste0("Replacing outliers and re-fitting model: minReplicatesForReplace=", minReplicatesForReplace, ", cooksCutoff=", cooksCutoff))
-    dds <- replaceOutliers(dds, trim = trim, cooksCutoff = cooksCutoff, minReplicates = minReplicatesForReplace)
+	  p <- ncol(attr(dds, "modelMatrix"))
+	  m <- ncol(dds)
+	  cooksCutoffValue <- qf(cooksCutoff, p, m - p)
+      print(paste0("Replacing outliers and re-fitting model: minReplicatesForReplace=", minReplicatesForReplace, ", cooksCutoff=", cooksCutoff, " (", cooksCutoffValue, ")"))
+    dds <- replaceOutliers(dds, trim = trim, cooksCutoff = cooksCutoffValue, minReplicates = minReplicatesForReplace)
 	if (reducedDesign == "") {
 		dds <- nbinomWaldTest(dds)
 	} else {
@@ -109,7 +112,11 @@ execute <- function(cf) {
   
   # extract results using case and control group as contrasts
 	if (coefficient == "") {
-		res <- results(dds, contrast=c("group", caseGroup, controlGroup), cooksCutoff=FALSE)
+		if (grepl(" group$", design)) {
+			res <- results(dds, contrast=c("group", caseGroup, controlGroup), cooksCutoff=FALSE)
+		} else {
+			res <- results(dds, cooksCutoff=FALSE)
+		}
 	} else {
 		res <- results(dds, name=coefficient, cooksCutoff=FALSE)
 	}
