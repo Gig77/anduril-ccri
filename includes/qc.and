@@ -133,6 +133,7 @@ function getQCReport
 		fastqc = SeqQC
 		(
 			read        = INPUT(path=sample.file),
+			suffix      = sample.alias,
 			sectionType = "subsubsection", 
 			@cpu        = 2, 
 			@memory     = 500,
@@ -146,7 +147,7 @@ function getQCReport
 	fastQCReport = LatexCombiner
 	(
 		array        = fastQCReports,
-		sectionTitle = "Sequence quality", 
+		sectionTitle = "Sequence quality (FastQC)", 
 		sectionType  = "subsection",
 		@enabled     = includeFastQC
 	)

@@ -64,6 +64,7 @@ execute <- function(cf) {
   
   samples <- samples[!is.na(samples$group),]
   samples$group <- factor(samples$group, levels=c(controlGroup, caseGroup, otherGroupsSplit))
+  samples <- samples[order(as.integer(samples$group)),]
   countMatrix <- countMatrix[,rownames(samples)]
 
 	print(sprintf("Groups in model: %s", paste(levels(samples$group), collapse=",")))
@@ -123,7 +124,7 @@ execute <- function(cf) {
 	results.out <- data.frame(ids=rownames(res), as.data.frame(res))
 	
 	# add normalized sample counts to output and compute separate means for experiment and control group	
-	results.out <- merge(results.out, subset(counts.norm, select=c(caseSamples, controlSamples)), by.x="ids", by.y="row.names", all.x=T)
+	results.out <- merge(results.out, subset(counts.norm, select=colnames(countMatrix)), by.x="ids", by.y="row.names", all.x=T)
 	results.out$baseMean <- rowMeans(results.out[,c(caseSamples, controlSamples)], na.rm=T)
 	if (length(caseSamples) > 1) { results.out$baseMeanE <- rowMeans(results.out[,caseSamples], na.rm=T) } else { results.out$baseMeanE <-results.out[,caseSamples] }
 	if (length(controlSamples) > 1) { results.out$baseMeanC <- rowMeans(results.out[,controlSamples], na.rm=T) } else { results.out$baseMeanC <-results.out[,controlSamples] }
@@ -132,7 +133,7 @@ execute <- function(cf) {
 	coln2 <- c('fc',             'p',      'q',    'meanExpr', 'meanExprE', 'meanExprC', 'fcSE',  'stat')
 	coln2 <- paste(coln2, colSuffix, sep='')
 	colnames(results.out)[match(coln1,colnames(results.out))] <- coln2
-	results.out <- results.out[,c("ids", coln2, caseSamples, controlSamples)]
+	results.out <- results.out[,c("ids", coln2, colnames(countMatrix))]
 	results.out <- results.out[order(results.out[,paste0("q", colSuffix)]),]
 
 	CSV.write(get.output(cf, 'results'), results.out)

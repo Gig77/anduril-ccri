@@ -68,7 +68,7 @@ function VennSetTableReport
 		}
 	}
 		
-	//std.echo(query)	
+	std.echo(query)	
 	table = TableQuery
 	(
 		tables = tables,
@@ -115,4 +115,87 @@ function VennSetTableReport
 	)
 	
 	return tableReport.report
+}
+
+function OverlapReport
+(
+	CSV    geneAnnot,
+	record degsCalled,
+	record degsAll,
+	record overlaps,
+	string sectionTitle = "Gene set overlaps",
+	string sectionType = "section"
+) -> (Latex report)
+{
+	overlapReportLst = record()
+
+	for ID, overlap : overlaps
+	{	
+		degSets = CSV2SetList
+		(
+			tables = degsCalled,
+			@name  = "degSets_" + std.quote(ID, type="Anduril")
+		)
+	
+		vennReportLst = record()
+	
+		venn = VennDiagram
+		(
+			sets         = degSets,
+			cexSetName   = 0.3,
+			cexSetSize   = 0.3,
+			doWeights    = true,
+			sets1        = std.recordToString(overlap.comparisons, keys=false),
+			sectionTitle = "Venn diagram",
+			sectionType  = "subsubsection",
+			types        = "circles",
+			@name        = "venn_" + std.quote(ID, type="Anduril")
+		)
+		vennReportLst["venn_"+ID] = venn.report
+	
+		vennExpanded = ExpandCollapse
+		(
+			relation = venn.sets,
+			@name    = "vennExpanded_" + std.quote(ID, type="Anduril")
+		)
+				
+		outputComparisons = record()
+		for id,set : overlap.sets
+		{	
+			tableReport = VennSetTableReport
+			(
+				vennSetData        = vennExpanded,
+				vennSetNames       = {set},
+				outputComparisons  = overlap.comparisons,
+				degs               = degsAll,
+				geneAnnot          = geneAnnot,
+				section            = std.quote(set, type="Latex"),
+				sectionType        = "subsubsection",
+				orderBy            = "average",
+				caption            = "These are genes of overlap set " + std.quote(set, type="Latex") + ". Genes sorted by column 'FC(A)'.",
+				@name              = "tableReport_" + std.quote(set, type="Anduril")
+			)
+			vennReportLst["tableReport_"+set] = tableReport.report
+		}
+		
+		overlapReport = LatexCombiner
+		(
+			array        = vennReportLst, 
+			pagebreak    = true,
+			sectionTitle = std.quote(ID, type="Latex"), 
+			sectionType  = "subsection",
+			@name        = "overlapReport_" + std.quote(ID, type="Anduril")
+		)
+		overlapReportLst[ID] = overlapReport.document
+	}
+
+	combinedReport = LatexCombiner
+	(
+		array        = overlapReportLst, 
+		pagebreak    = true,
+		sectionTitle = sectionTitle, 
+		sectionType  = sectionType
+	)
+	
+	return combinedReport.document		
 }

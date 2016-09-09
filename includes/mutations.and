@@ -164,7 +164,7 @@ function MutationReport
 			tabledata    = variantTable.table,
 			refs         = hyperlinkRule,
 			attach       = false,
-			caption      = "RNA-seq variants detected in sample " + sample + ". Included are non-silent variants that (a) are predicted deleterious, (b) alter the same amino acid as a 'confirmed somatic' variant in the COSMIC database, " +
+			caption      = "RNA-seq variants detected in sample " + std.quote(sample, type="LaTeX") + ". Included are non-silent variants that (a) are predicted deleterious, (b) alter the same amino acid as a 'confirmed somatic' variant in the COSMIC database, " +
 			               "or (c) are annotated as 'pathogenic' or 'likely pathogenic' in the ClinVar database. Column 'Variant' shows the induced change at the DNA level (GRCh37 coordinates), column 'Effect' the variant category " +
 			               "as annotated by SnpEff, 'Delet.' whether the variant is predicted deleterious or not, 'AA' the change at the amino acid level, 'Reads' the number of variant-supporting reads, " +
 			               "'Qual.' the average Phred-scaled base quality of variant-supporting bases, 'AF' the allelic frequency of the variant, 'ClinVar' the identifier and pathogenicity annotation for known ClinVar variants, " +
@@ -179,7 +179,7 @@ function MutationReport
 			rename       = "Deleterious=Delet.,AA change=AA,# reads=Reads,# cosmic=COSMIC,Quality=Qual.",
 			pageBreak    = false,
 			skipEmpty    = true,
-			section      = sample,
+			section      = std.quote(sample, type="LaTeX"),
 			sectionType  = "subsection",
 			@name        = "variantTableReport" + std.strReplace(sample, '-', '_')
 		)
